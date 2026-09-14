@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Capstone",
+  "version": "1.0",
+  "description": "Reading-focus tool.",
+
+  "action": {
+    "default_popup": "popup/popup.html"
+  },
+
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting"
+  ],
+
+  "host_permissions": [
+    "*://*/*"
+  ],
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "js": ["dist/content.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true
+    }
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["styles.css"],
+      "matches": ["*://*/*"]
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en" class="extension-theme">
+<head>
+    <meta charset="UTF-8">
+    <title>Extension Popup</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+
+<body>
+
+    <div id="extension-box">
+        <div class="extension-box-inner">
+            <header class="extension-box-header">
+                <button id="btn-play">▶</button>
+                <button id="btn-customize">Customize</button>
+                <button id="btn-three">Three</button>
+                <button id="btn-four">Four</button>
+                <button id="btn-five">Five</button>
+            </header>
+
+            <div class="fr-panel" id="panel-customize">
+                <div class="font-row">
+                    <label for="font-select">Basic Font Style</label>
+                    <select id="font-select">
+                        <option value="sans-serif">Sans Serif</option>
+                        <option value="serif">Serif</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Comic Sans MS">Comic Sans MS</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                    </select>
+                    <label><input type="checkbox" id="set-bionic">Bionic Reading</label>
+                </div>
+                <div class="font-row">
+                    <label for="font-size">Font Size</label>
+                    <select id="font-size">
+                        <option value=14>Small</option>
+                        <option value=16>Medium</option>
+                        <option value=18>Large</option>
+                        <option value=20>Extra Large</option>
+                    </select>
+                </div>
+                <div class="font-row">
+                    <label for="color-theme">Color Themes</label>
+                    <select id="color-theme">
+                         <option value="theme-dark">Dark</option>
+                        <option value="theme-light">Light</option>
+                        <option value="theme-forest">Forest</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="fr-panel" id="panel-three"></div>
+            <div class="fr-panel" id="panel-four"></div>
+            <div class="fr-panel" id="panel-five"></div>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
