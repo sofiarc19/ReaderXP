@@ -1,3 +1,6 @@
+// Chrome exposes `chrome`; Firefox exposes `browser`. Normalize.
+globalThis.browser = globalThis.browser || globalThis.chrome;
+
 let lastSelection = "";
 
 browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
