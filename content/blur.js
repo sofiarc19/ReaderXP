@@ -1,19 +1,27 @@
+// Tracks whether blur mode is currently active
 export let blurEnabled = false;
 
 export function toggleBlur() {
+  // Flip blur state on/off
   blurEnabled = !blurEnabled;
 
   if (blurEnabled) {
+    // Apply global blur class to the page
     document.body.classList.add("fr-blur-all");
+
   } else {
+    // Remove blur from the page
     document.body.classList.remove("fr-blur-all");
+
+    // If the reader bar exists, remove it when blur is turned off
     const bar = document.getElementById("reader-area-bar");
-    if (bar) bar.remove(); //closing the reader
+    if (bar) bar.remove(); 
   }
 }
 
 export function startObserver() {
   function attachObserver() {
+      // Wait until <body> exists before attaching the observer
     if (!document.body) {
       // Try again shortly
       setTimeout(attachObserver, 50);
@@ -21,21 +29,25 @@ export function startObserver() {
     }
 
     let scheduled = false;
-
+    // Watch for DOM changes
     const observer = new MutationObserver(() => {
+      // Prevent rapid repeated triggers
       if (scheduled) return;
       scheduled = true;
 
+      // Debounce mutation handling
       setTimeout(() => {
         scheduled = false;
       }, 100);
     });
 
+    // Observe additions/removals anywhere in the document
     observer.observe(document.body, {
       childList: true,
       subtree: true
     });
   }
 
+  // Begin observer setup
   attachObserver();
 }

@@ -1,9 +1,12 @@
 import { extractAllText } from "./textExtraction.js";
 
+// Fix cases where headline-style fragments run together.
+// Adds a period after certain colon-separated blocks.
 export function splitMixedFragments(text) {
   return text.replace(/([A-Z][^.!?]+:[^.!?]+)(?=\s+[A-Z])/g, "$1.");
 }
 
+// Merge short or incomplete fragments into full sentences.
 export function stitchFragments(sentences) {
   const stitched = [];
   let buffer = "";
@@ -11,8 +14,7 @@ export function stitchFragments(sentences) {
   for (let s of sentences) {
     const trimmed = s.trim();
 
-    // If the fragment is too short or looks like a proper noun/link fragment,
-    // merge it into the previous sentence instead of treating it as standalone.
+    // Detect fragments that shouldn't stand alone
     const isFragment =
       trimmed.length < 40 ||                     // short
       /^[A-Z][a-z]+(?:\s[A-Z][a-z]+)*$/.test(trimmed) || // proper nouns
@@ -20,14 +22,17 @@ export function stitchFragments(sentences) {
       !/[.!?]$/.test(trimmed);                   // no ending punctuation
 
     if (isFragment) {
+      // Merge into previous buffer
       buffer += " " + trimmed;
     } else {
+      // Full sentence → push and reset buffer
       buffer += " " + trimmed;
       stitched.push(buffer.trim());
       buffer = "";
     }
   }
 
+  // Push any leftover fragment
   if (buffer.trim().length > 0) {
     stitched.push(buffer.trim());
   }
@@ -35,6 +40,8 @@ export function stitchFragments(sentences) {
   return stitched;
 }
 
+// Score how "real" a sentence looks using length, punctuation,
+// alphabetic density, and stopword presence.
 export function scoreSentence(sentence) {
   const words = sentence.split(/\s+/);
   const wordCount = words.length;
@@ -71,6 +78,7 @@ export function scoreSentence(sentence) {
   return confidence;
 }
 
+// Detect ad-like or promotional sentences to filter out.
 export function isAdSentence(s) {
   const text = s.trim();
 
@@ -96,7 +104,7 @@ export function isAdSentence(s) {
   return false;
 }
 
-//start with strict sentence confidence requirement once "real" sentence has been found can be more lenient
+// Filter sentences using strict rules until a "real" anchor sentence is found, then relax the threshold.
 export function filterSentencesDynamically(scoredSentences) {
   const STRICT_THRESHOLD = 0.50;
   const NORMAL_THRESHOLD = 0.35;
@@ -115,10 +123,10 @@ export function filterSentencesDynamically(scoredSentences) {
     const hasVerb = /\b(is|are|was|were|be|have|has|had|says|said|made|make|share|shared|shows|showed|collided|crashed|killed|injured|posted|sparked|tells|reports|writes)\b/i.test(text);
     const endsProperly = /[.!?]$/.test(text);
 
-    // Before anchor
+    // Before anchor: strict filtering
     if (!anchorFound) {
       if (!isWikiLike && isAdSentence(text)) {
-        // Recovery rule: salvage embedded real content
+        // Try to salvage real content inside ad-like text
         const split = text.split(/(?<=\.)\s+/);
         const realPart = split.find(t =>
           /\b(is|are|was|were|be|have|has|had|says|said|posted|shared|reports|writes)\b/i.test(t)
@@ -144,7 +152,7 @@ export function filterSentencesDynamically(scoredSentences) {
       }
     }
 
-    //After anchor
+    // After anchor: relaxed filtering
     else {
       if (s.score >= NORMAL_THRESHOLD) {
         result.push(text);
@@ -154,6 +162,7 @@ export function filterSentencesDynamically(scoredSentences) {
     }
   }
 
+  // Debug logging
   console.group("Sentence Filtering Debug");
   console.log("Accepted sentences:", result.length);
   console.log("Rejected sentences:", rejected.length);
@@ -163,6 +172,7 @@ export function filterSentencesDynamically(scoredSentences) {
   return result;
 }
 
+// Full extraction pipeline for page text
 export function extractSentences() {
   const raw = extractAllText();
   const cleaned = splitMixedFragments(raw);
@@ -176,6 +186,7 @@ export function extractSentences() {
   return filterSentencesDynamically(scored);
 }
 
+// Manual text extraction (used when user selects text)
 export function extractSentencesFromText(text) {
   const cleaned = splitMixedFragments(text);
   const rawSentences = cleaned.match(/[^.!?]+[.!?]+/g) || [];

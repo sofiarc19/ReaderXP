@@ -1,16 +1,19 @@
 import { state } from "./state.js";
 import { nextPage, prevPage } from "./pagination.js";
 
+// Choose the correct word‑transform function (normal or bionic)
 export function getActiveTransformFunction() {
   return state.readerSettings.bionic ? transformBionic : transformNormal;
 }
 
+// Render a chunk of sentences into the reader UI
 export function renderChunk(chunk) {
   const readerActive = document.getElementById("reader-active");
   if (!readerActive) return;
 
   const transform = getActiveTransformFunction();
 
+  // Transform each sentence → each word → join back into HTML
   const html = chunk
     .map(sentence =>
       sentence.split(" ").map(word => transform(word)).join(" ")
@@ -20,17 +23,18 @@ export function renderChunk(chunk) {
   readerActive.innerHTML = html;
 }
 
+// Re-render the current chunk (used when settings change)
 export function rerenderReader() {
   if (!currentChunk) return;
   renderChunk(currentChunk);
 }
 
-//default
+// Normal mode: return word unchanged
 export function transformNormal(word) {
   return word;
 }
 
-//bionic mode
+// Bionic mode: bold the first ~40% of each word
 export function transformBionic(word) {
   const cutoff = Math.ceil(word.length * 0.4);
   const first = word.slice(0, cutoff);
@@ -39,7 +43,7 @@ export function transformBionic(word) {
   return `<span class="bionic-first">${first}</span>${rest}`;
 }
 
-//themes
+// Apply a visual theme to all extension UI elements
 export function applyTheme(themeName) {
   const targets = document.querySelectorAll(".extension-theme");
 
@@ -53,6 +57,7 @@ export function applyTheme(themeName) {
   });
 }
 
+// Update the page progress indicator (e.g., "3 / 12")
 export function updateReaderProgress() {
   const progressEl = document.getElementById("reader-progress");
   if (!progressEl) return;
@@ -63,6 +68,7 @@ export function updateReaderProgress() {
   progressEl.textContent = `${current} / ${total}`;
 }
 
+// Inject the reader UI bar into the page
 export function injectReaderArea() {
   const existing = document.getElementById("reader-area-bar");
   if (existing) existing.remove();
@@ -80,13 +86,15 @@ export function injectReaderArea() {
     <div id="reader-active"></div>
   `;
 
-  // attach to <html>, not <body>
+  // Attach to <html> so blur mode can hide the entire page cleanly
   document.documentElement.appendChild(bar);
 
+  // Navigation buttons
   document.getElementById("btn-next").addEventListener("click", nextPage);
   document.getElementById("btn-prev").addEventListener("click", prevPage);
 }
 
+// Apply font + size + theme settings to the reader UI
 export function updateReaderStyle() {
   const bar = document.getElementById("reader-area-bar");
   if (!bar) return;

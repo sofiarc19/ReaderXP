@@ -8,6 +8,7 @@ import { state } from "./state.js";
 import { buildPageIndexMap, setActiveParagraph } from "./pagination.js";
 
 export function setupMessaging() {
+  // Normalize extension API between Chrome (chrome) and Firefox (browser)
   const api = globalThis.browser || globalThis.chrome;
 
   api.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -15,6 +16,7 @@ export function setupMessaging() {
 
     switch (msg.action) {
       case "ping":
+        // Simple health check from the popup
         sendResponse({ ok: true });
         return false;
 
@@ -23,25 +25,40 @@ export function setupMessaging() {
           "[CONTENT] Starting reader, selectedText length:",
           msg.selectedText ? msg.selectedText.length : 0,
         );
+
+        // Apply any reader settings sent from popup
         if (msg.settings) {
           Object.assign(state.readerSettings, msg.settings);
         }
+
+        // Toggle blur mode (enables/disables reader)
         toggleBlur();
         if (!blurEnabled) {
+          // Reader was closed instead of opened
           sendResponse({ ok: true, active: false });
           return false;
         }
+
+        // Insert reader UI into the page
         injectReaderArea();
+
+        // Use manually selected text if provided
         const manual = msg.selectedText?.trim();
         if (manual && manual.length > 0) {
           state.allSentences = extractSentencesFromText(manual);
         } else {
+          // Otherwise extract sentences from the page
           state.allSentences = extractSentences();
         }
+
+        // Build pagination structure for reader
         state.pageIndexMap = buildPageIndexMap();
         state.currentPage = 0;
+
+        // Apply styling + highlight first paragraph
         updateReaderStyle();
         setActiveParagraph();
+
         sendResponse({ ok: true, active: true });
         break;
 
@@ -74,7 +91,7 @@ export function setupMessaging() {
         break;
     }
 
-    return false;
+    return false; // Required for async sendResponse in MV3
   });
 
   console.log("[CONTENT] Messaging ready");

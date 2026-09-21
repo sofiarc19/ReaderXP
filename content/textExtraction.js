@@ -1,11 +1,12 @@
 // content/textExtraction.js
 
-// Prevent tree walker from picking up reader area text
+// Check if a node is inside the extension's reader UI (exclude from extraction)
 export function isInsideExtensionUI(el) {
   return el.closest("#reader-area-bar");
 }
 
 export function extractAllText(excludedIds = [], excludedClasses = []) {
+  // Common selectors to ignore (headers, nav, ads, sidebars, etc.)
   const commonExcluded = [
     "header", "nav", "footer", "aside",
     "#extension-box", "#reader-area-bar",
@@ -15,12 +16,14 @@ export function extractAllText(excludedIds = [], excludedClasses = []) {
     ".related", ".share", ".toc", ".mw-jump-link"
   ];
 
+  // Combine user‑provided exclusions with built‑in ones
   const allExcluded = [
     ...excludedIds.map(id => `#${CSS.escape(id)}`),
     ...excludedClasses.map(cls => `.${CSS.escape(cls)}`),
     ...commonExcluded
   ];
 
+  // Prefer main content containers; fallback to body
   const roots = document.querySelectorAll(
     "article, main, #content, .content, .mw-parser-output, .post, .entry-content, .document-content"
   );
@@ -29,6 +32,7 @@ export function extractAllText(excludedIds = [], excludedClasses = []) {
   let text = "";
 
   for (const root of walkerRoots) {
+    // TreeWalker to collect visible text nodes
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
       acceptNode(node) {
         const t = node.textContent.trim();
@@ -37,17 +41,19 @@ export function extractAllText(excludedIds = [], excludedClasses = []) {
         const p = node.parentElement;
         if (!p) return NodeFilter.FILTER_REJECT;
 
+        // Skip excluded containers
         for (const sel of allExcluded) {
           if (p.closest(sel)) return NodeFilter.FILTER_REJECT;
         }
 
+        // Skip captions, tables, alt/aria text
         if (p.closest("figcaption, caption, table, th, td"))
           return NodeFilter.FILTER_REJECT;
 
         if (p.hasAttribute("aria-label") || p.hasAttribute("alt"))
           return NodeFilter.FILTER_REJECT;
 
-        // Smarter link handling
+        // Skip link fragments, footnotes, coordinates, IPA, tiny UI text
         if (p.closest("a")) {
           if (/^\[\w+\]$/.test(t)) return NodeFilter.FILTER_REJECT; // footnotes
           if (/°/.test(t)) return NodeFilter.FILTER_REJECT; // coordinates
@@ -55,18 +61,20 @@ export function extractAllText(excludedIds = [], excludedClasses = []) {
           if (t.length < 3) return NodeFilter.FILTER_REJECT; // UI fragments
         }
 
+        // Skip hidden elements
         const style = window.getComputedStyle(p);
         if (style.display === "none" || style.visibility === "hidden")
           return NodeFilter.FILTER_REJECT;
 
+        // Skip non‑content tags
         const tag = p.tagName.toLowerCase();
         if (["script", "style", "noscript", "svg", "math", "meta", "link"].includes(tag))
           return NodeFilter.FILTER_REJECT;
 
-        // Softer short-text filter
+        // Skip extremely short fragments
         if (t.length < 10) return NodeFilter.FILTER_REJECT;
 
-        // Expanded UI phrase filter
+        // Skip common UI phrases
         if (/^(Create your free account|Subscribe|Login|Register|Share|Download|Jump to|Navigation|From Wikipedia|Contents|Tools|Languages)/i.test(t))
           return NodeFilter.FILTER_REJECT;
 
@@ -74,6 +82,7 @@ export function extractAllText(excludedIds = [], excludedClasses = []) {
       }
     });
 
+    // Collect accepted text nodes
     let node;
     while ((node = walker.nextNode())) {
       text += " " + node.textContent;
@@ -98,6 +107,7 @@ export function extractAllText(excludedIds = [], excludedClasses = []) {
     text = text.replace(/See also[\s\S]+$/i, "");
   }
 
+  // General cleanup
   text = text.replace(/\s*,\s*,/g, ",");
   text = text.replace(/\s{2,}/g, " ");
 
