@@ -243,12 +243,27 @@
   }
 
   // content/state.js
-  var state = {
+  var state2 = {
     allSentences: [],
     pageIndexMap: [],
     currentPage: 0,
+    // Time tracking
+    timeStarted: null,
+    timeSpentMs: 0,
+    lastInteraction: Date.now(),
+    // Reader progress
+    paragraphSwitches: 0,
+    // Track which paragraphs have already given XP
+    paragraphXpMap: /* @__PURE__ */ new Set(),
+    // Leveling system
+    level: 1,
+    xp: 0,
+    // The actual slice of sentences being displayed
     currentChunk: null,
+    // Index of the first sentence in the current chunk
     activeElement: null,
+    // cacheing prevents recalculating density and difficulty every time the user switches pages.
+    paragraphCache: /* @__PURE__ */ new Map(),
     readerSettings: {
       font: "sans-serif",
       fontSize: "16px",
@@ -258,6 +273,9 @@
   };
 
   // content/pagination.js
+  var SHORT_THRESHOLD = 300;
+  var LONG_THRESHOLD = 700;
+  state2.paragraphCache = /* @__PURE__ */ new Map();
   function getDynamicSentenceCount(sentences, startIndex) {
     const BASE = 9;
     const MIN = 1;
@@ -269,9 +287,9 @@
       if (!s) break;
       totalChars += s.length;
     }
-    if (totalChars < 300) {
+    if (totalChars < SHORT_THRESHOLD) {
       count = Math.min(MAX, BASE + 2);
-    } else if (totalChars > 700) {
+    } else if (totalChars > LONG_THRESHOLD) {
       count = Math.max(MIN, BASE - 2);
     }
     return count;
@@ -279,44 +297,108 @@
   function buildPageIndexMap() {
     const map = [];
     let index = 0;
-    while (index < state.allSentences.length) {
+    while (index < state2.allSentences.length) {
       map.push(index);
-      const count = getDynamicSentenceCount(state.allSentences, index);
+      const count = getDynamicSentenceCount(state2.allSentences, index);
       index += count;
     }
     return map;
   }
   function setActiveParagraph() {
-    if (state.allSentences.length === 0) {
-      state.allSentences = extractSentences();
+    if (state2.allSentences.length === 0) {
+      state2.allSentences = extractSentences();
     }
-    if (state.pageIndexMap.length === 0) {
-      state.pageIndexMap = buildPageIndexMap();
+    if (state2.pageIndexMap.length === 0) {
+      state2.pageIndexMap = buildPageIndexMap();
     }
-    const start = state.pageIndexMap[state.currentPage];
-    const count = getDynamicSentenceCount(state.allSentences, start);
+    const start = state2.pageIndexMap[state2.currentPage];
+    const count = getDynamicSentenceCount(state2.allSentences, start);
     const end = start + count;
-    state.currentChunk = state.allSentences.slice(start, end);
-    renderChunk(state.currentChunk);
+    state2.currentChunk = state2.allSentences.slice(start, end);
+    renderChunk(state2.currentChunk);
     updateReaderProgress();
-    state.activeElement = start;
+    state2.activeElement = start;
+  }
+  function updateLeveling() {
+    const paragraphId = state2.currentPage;
+    const sentences = state2.currentChunk;
+    const timeMs = Date.now() - state2.timeStarted;
+    if (state2.paragraphXpMap.has(paragraphId)) {
+      console.log("[LEVEL] No XP: paragraph already rewarded.");
+      return;
+    }
+    const { expectedTime, difficulty } = getCachedStats(paragraphId, sentences);
+    console.log("[LEVEL] Time spent:", timeMs, "Expected:", expectedTime);
+    if (timeMs < expectedTime) {
+      console.log("[LEVEL] No XP: user did not spend enough time.");
+      return;
+    }
+    const xp = difficulty;
+    state2.xp += xp;
+    console.log("[LEVEL] XP gained:", xp, "Total XP:", state2.xp);
+    state2.paragraphXpMap.add(paragraphId);
+    if (state2.xp >= state2.level * 100) {
+      state2.level++;
+      console.log("[LEVEL] Level up! New level:", state2.level);
+    }
+    state2.timeStarted = Date.now();
   }
   function nextPage() {
-    if (state.currentPage < state.pageIndexMap.length - 1) {
-      state.currentPage++;
+    if (state2.currentPage < state2.pageIndexMap.length - 1) {
+      state2.lastInteraction = Date.now();
+      console.log("[READER] Interaction: nextPage \u2192 lastInteraction:", state2.lastInteraction);
+      state2.paragraphSwitches++;
+      state2.currentPage++;
+      updateLeveling();
       setActiveParagraph();
     }
   }
   function prevPage() {
-    if (state.currentPage > 0) {
-      state.currentPage--;
+    if (state2.currentPage > 0) {
+      state2.lastInteraction = Date.now();
+      console.log("[READER] Interaction: prevPage \u2192 lastInteraction:", state2.lastInteraction);
+      state2.paragraphSwitches++;
+      state2.currentPage--;
       setActiveParagraph();
     }
+  }
+  function getCachedStats(paragraphId, sentences) {
+    if (state2.paragraphCache.has(paragraphId)) {
+      return state2.paragraphCache.get(paragraphId);
+    }
+    const { chars, sentenceCount } = getParagraphStats(sentences);
+    const expectedTime = getExpectedTimeMs(sentences);
+    const difficulty = getParagraphDifficulty(sentences);
+    const stats = { chars, sentenceCount, expectedTime, difficulty };
+    state2.paragraphCache.set(paragraphId, stats);
+    return stats;
+  }
+  function getParagraphStats(sentences) {
+    const chars = sentences.reduce((sum, s) => sum + s.length, 0);
+    const sentenceCount = sentences.length;
+    return { chars, sentenceCount };
+  }
+  function getExpectedTimeMs(sentences) {
+    const { chars } = getParagraphStats(sentences);
+    let base = 15e3;
+    if (chars < SHORT_THRESHOLD) base -= 5e3;
+    if (chars > LONG_THRESHOLD) base += 5e3;
+    return base;
+  }
+  function getParagraphDifficulty(sentences) {
+    const { chars, sentenceCount } = getParagraphStats(sentences);
+    let xp = 5;
+    xp = Math.max(xp, 3);
+    xp = Math.min(xp, 20);
+    if (chars < SHORT_THRESHOLD) xp += 2;
+    if (chars > LONG_THRESHOLD) xp += 6;
+    xp += Math.floor(sentenceCount / 2);
+    return xp;
   }
 
   // content/readerUI.js
   function getActiveTransformFunction() {
-    return state.readerSettings.bionic ? transformBionic : transformNormal;
+    return state2.readerSettings.bionic ? transformBionic : transformNormal;
   }
   function renderChunk(chunk) {
     const readerActive = document.getElementById("reader-active");
@@ -339,8 +421,8 @@
   function updateReaderProgress() {
     const progressEl = document.getElementById("reader-progress");
     if (!progressEl) return;
-    const total = state.pageIndexMap.length;
-    const current = state.currentPage + 1;
+    const total = state2.pageIndexMap.length;
+    const current = state2.currentPage + 1;
     progressEl.textContent = `${current} / ${total}`;
   }
   function injectReaderArea() {
@@ -364,12 +446,12 @@
   function updateReaderStyle() {
     const bar = document.getElementById("reader-area-bar");
     if (!bar) return;
-    bar.style.setProperty("--reader-font", state.readerSettings.font);
-    bar.style.setProperty("--reader-font-size", state.readerSettings.fontSize + "px");
+    bar.style.setProperty("--reader-font", state2.readerSettings.font);
+    bar.style.setProperty("--reader-font-size", state2.readerSettings.fontSize + "px");
     const targets = document.querySelectorAll(".extension-theme");
     targets.forEach((el) => {
       el.classList.remove("theme-dark", "theme-light", "theme-forest");
-      el.classList.add(state.readerSettings.theme);
+      el.classList.add(state2.readerSettings.theme);
     });
   }
 
@@ -381,6 +463,11 @@
       document.body.classList.add("fr-blur-all");
     } else {
       document.body.classList.remove("fr-blur-all");
+      if (!blurEnabled) {
+        state.timeSpentMs += Date.now() - state.timeStarted;
+        console.log("[READER] Session ended. Duration:", sessionMs, "ms");
+        console.log("Time spent (ms):", state.timeSpentMs);
+      }
       const bar = document.getElementById("reader-area-bar");
       if (bar) bar.remove();
     }
@@ -421,8 +508,12 @@
             "[CONTENT] Starting reader, selectedText length:",
             msg.selectedText ? msg.selectedText.length : 0
           );
+          state2.timeStarted = Date.now();
+          console.log("[READER] Started at:", state2.timeStarted);
+          state2.lastInteraction = Date.now();
+          console.log("[READER] Initial lastInteraction:", state2.lastInteraction);
           if (msg.settings) {
-            Object.assign(state.readerSettings, msg.settings);
+            Object.assign(state2.readerSettings, msg.settings);
           }
           toggleBlur();
           if (!blurEnabled) {
@@ -432,33 +523,33 @@
           injectReaderArea();
           const manual = msg.selectedText?.trim();
           if (manual && manual.length > 0) {
-            state.allSentences = extractSentencesFromText(manual);
+            state2.allSentences = extractSentencesFromText(manual);
           } else {
-            state.allSentences = extractSentences();
+            state2.allSentences = extractSentences();
           }
-          state.pageIndexMap = buildPageIndexMap();
-          state.currentPage = 0;
+          state2.pageIndexMap = buildPageIndexMap();
+          state2.currentPage = 0;
           updateReaderStyle();
           setActiveParagraph();
           sendResponse({ ok: true, active: true });
           break;
         case "set-basic-font":
-          state.readerSettings.font = msg.value;
+          state2.readerSettings.font = msg.value;
           updateReaderStyle();
           sendResponse({ ok: true });
           break;
         case "set-bionic":
-          state.readerSettings.bionic = msg.value;
+          state2.readerSettings.bionic = msg.value;
           updateReaderStyle();
           sendResponse({ ok: true });
           break;
         case "set-font-size":
-          state.readerSettings.fontSize = msg.value;
+          state2.readerSettings.fontSize = msg.value;
           updateReaderStyle();
           sendResponse({ ok: true });
           break;
         case "set-theme":
-          state.readerSettings.theme = msg.value;
+          state2.readerSettings.theme = msg.value;
           updateReaderStyle();
           sendResponse({ ok: true });
           break;
@@ -473,6 +564,13 @@
 
   // content/content.js
   console.log("CONTENT SCRIPT LOADED");
+  setInterval(() => {
+    const idleMs = Date.now() - state2.lastInteraction;
+    console.log("[READER] Idle check:", idleMs, "ms");
+    if (idleMs > 45e3) {
+      console.log("[READER] Attention check: user idle for", idleMs, "ms");
+    }
+  }, 5e3);
   globalThis.browser = globalThis.browser || globalThis.chrome;
   function init() {
     startObserver();

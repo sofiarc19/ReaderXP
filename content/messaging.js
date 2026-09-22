@@ -26,6 +26,13 @@ export function setupMessaging() {
           msg.selectedText ? msg.selectedText.length : 0,
         );
 
+        // Start timing the reading session
+        state.timeStarted = Date.now();
+        console.log("[READER] Started at:", state.timeStarted);
+
+        state.lastInteraction = Date.now();
+        console.log("[READER] Initial lastInteraction:", state.lastInteraction);
+
         // Apply any reader settings sent from popup
         if (msg.settings) {
           Object.assign(state.readerSettings, msg.settings);
