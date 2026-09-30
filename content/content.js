@@ -8,9 +8,9 @@ setInterval(() => {
   const idleMs = Date.now() - state.lastInteraction;
   console.log("[READER] Idle check:", idleMs, "ms");
 
-  if (idleMs > 45000) {
-    console.log("[READER] Attention check: user idle for", idleMs, "ms");
-  }
+  // if (idleMs > 45000) {
+  //   console.log("[READER] Attention check: user idle for", idleMs, "ms");
+  // }
 }, 5000);
 
 // Normalize API: Firefox uses `browser`, Chrome uses `chrome`

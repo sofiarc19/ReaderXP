@@ -21,54 +21,63 @@ export function setupMessaging() {
         return false;
 
       case "start-reader":
-        console.log(
-          "[CONTENT] Starting reader, selectedText length:",
-          msg.selectedText ? msg.selectedText.length : 0,
-        );
+        chrome.storage.sync.get(["xp", "level"], (data) => {
+          if (data.xp !== undefined) state.xp = data.xp;
+          if (data.level !== undefined) state.level = data.level;
 
-        // Start timing the reading session
-        state.timeStarted = Date.now();
-        console.log("[READER] Started at:", state.timeStarted);
+          console.log("[LEVEL] Loaded XP + Level:", state.xp, state.level);
 
-        state.lastInteraction = Date.now();
-        console.log("[READER] Initial lastInteraction:", state.lastInteraction);
+          console.log(
+            "[CONTENT] Starting reader, selectedText length:",
+            msg.selectedText ? msg.selectedText.length : 0,
+          );
 
-        // Apply any reader settings sent from popup
-        if (msg.settings) {
-          Object.assign(state.readerSettings, msg.settings);
-        }
+          // Start timing the reading session
+          state.timeStarted = Date.now();
+          console.log("[READER] Started at:", state.timeStarted);
 
-        // Toggle blur mode (enables/disables reader)
-        toggleBlur();
-        if (!blurEnabled) {
-          // Reader was closed instead of opened
-          sendResponse({ ok: true, active: false });
-          return false;
-        }
+          // Track last interaction time for idle detection
+          state.lastInteraction = Date.now();
+          console.log("[READER] Initial lastInteraction:", state.lastInteraction);
 
-        // Insert reader UI into the page
-        injectReaderArea();
+          // Apply any reader settings sent from popup
+          if (msg.settings) {
+            Object.assign(state.readerSettings, msg.settings);
+          }
 
-        // Use manually selected text if provided
-        const manual = msg.selectedText?.trim();
-        if (manual && manual.length > 0) {
-          state.allSentences = extractSentencesFromText(manual);
-        } else {
-          // Otherwise extract sentences from the page
-          state.allSentences = extractSentences();
-        }
+          // Toggle blur mode (enables/disables reader)
+          toggleBlur();
+          if (!blurEnabled) {
+            // Reader was closed instead of opened
+            sendResponse({ ok: true, active: false });
+            return false;
+          }
 
-        // Build pagination structure for reader
-        state.pageIndexMap = buildPageIndexMap();
-        state.currentPage = 0;
+          // Insert reader UI into the page
+          injectReaderArea();
 
-        // Apply styling + highlight first paragraph
-        updateReaderStyle();
-        setActiveParagraph();
+          // Use manually selected text if provided
+          const manual = msg.selectedText?.trim();
+          if (manual && manual.length > 0) {
+            state.allSentences = extractSentencesFromText(manual);
+          } else {
+            // Otherwise extract sentences from the page
+            state.allSentences = extractSentences();
+          }
 
-        sendResponse({ ok: true, active: true });
+          // Build pagination structure for reader
+          state.pageIndexMap = buildPageIndexMap();
+          state.currentPage = 0;
+
+          // Apply styling + highlight first paragraph
+          updateReaderStyle();
+          setActiveParagraph();
+
+          sendResponse({ ok: true, active: true });
+        });
+        
         break;
-
+        
       case "set-basic-font":
         state.readerSettings.font = msg.value;
         updateReaderStyle();

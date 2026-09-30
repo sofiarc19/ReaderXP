@@ -106,15 +106,23 @@ export function updateLeveling() {
   // 3. Calculate difficulty-based XP
   const xp = difficulty;
   state.xp += xp;
-
-  console.log("[LEVEL] XP gained:", xp, "Total XP:", state.xp);
+  // 3.5: Save XP + level to chrome.storage.sync
+  chrome.storage.sync.set({
+    xp: state.xp,
+    level: state.level
+  }, () => {
+    console.log("[LEVEL] Saved XP + Level:", state.xp, state.level);
+  });
 
   // 4. Mark paragraph as rewarded 
   state.paragraphXpMap.add(paragraphId);
 
   // 5. Level up check 
-  if (state.xp >= state.level * 100) {
-    state.level++;
+  const required = state.level * 100;
+
+  if (state.xp >= required) {
+    state.xp -= required;   // subtract required XP
+    state.level++;          // level up
     console.log("[LEVEL] Level up! New level:", state.level);
   }
 
@@ -175,31 +183,44 @@ function getParagraphStats(sentences) {
 }
 
 function getExpectedTimeMs(sentences) {
-  const { chars } = getParagraphStats(sentences);
+  const { chars, sentenceCount } = getParagraphStats(sentences);
 
-  // Base time per paragraph
-  let base = 15000; // 15 seconds minimum
+  // Base time: 1.2 seconds per sentence
+  let base = sentenceCount * 1200;
 
-  // Adjust based on density
-  if (chars < SHORT_THRESHOLD) base -= 5000;   // short paragraph = -5 secs → 10s
-  if (chars > LONG_THRESHOLD) base += 5000;   // long paragraph = +5 → 20s
+  // Density multiplier: more characters = slower reading
+  const densityMultiplier = chars / (sentenceCount * 80); 
+  // 80 chars per sentence is average
 
-  return base;
+  base *= densityMultiplier;
+
+  // Clamp between 8s and 30s
+  base = Math.max(base, 8000);
+  base = Math.min(base, 30000);
+
+  return Math.round(base);
 }
 
 function getParagraphDifficulty(sentences) {
   const { chars, sentenceCount } = getParagraphStats(sentences);
 
-  let xp = 5; // base XP
-  // Minimum XP per paragraph
+  let xp = 0;
+
+  // XP from sentence count (structure)
+  xp += sentenceCount * 1.5; // 1.5 XP per sentence
+
+  // XP from density (content weight)
+  xp += chars / 120; // 120 chars ≈ 1 XP
+
+  // Short paragraph bonus
+  if (chars < SHORT_THRESHOLD) xp += 1;
+
+  // Long paragraph bonus
+  if (chars > LONG_THRESHOLD) xp += 4;
+
+  // Clamp between 3 and 30 XP
   xp = Math.max(xp, 3);
-  // Max XP per paragraph 
-  xp = Math.min(xp, 20);
+  xp = Math.min(xp, 30);
 
-  if (chars < SHORT_THRESHOLD) xp += 2;   // short paragraph
-  if (chars > LONG_THRESHOLD) xp += 6;   // long paragraph
-
-  xp += Math.floor(sentenceCount / 2); // more sentences → more XP
-
-  return xp;
+  return Math.round(xp);
 }
