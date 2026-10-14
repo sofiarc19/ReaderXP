@@ -1,6 +1,7 @@
 import { state } from "./state.js";
 import { renderChunk, updateReaderProgress } from "./readerUI.js";
 import { extractSentences } from "./sentenceProcessing.js";
+import { showSummaryPage } from "./summary.js";
 
 // Character Thresholds
 const SHORT_THRESHOLD = 300;
@@ -54,12 +55,14 @@ export function setActiveParagraph() {
   // If no sentences yet, extract from page
   if (state.allSentences.length === 0) {
     state.allSentences = extractSentences();
+    state.totalWordsRead =state.allSentences.join(" ").split(/\s+/).filter(Boolean).length;
   }
 
   // Build pagination if missing
   if (state.pageIndexMap.length === 0) {
     state.pageIndexMap = buildPageIndexMap();
   }
+  
   // Determine the starting index for the current page
   const start = state.pageIndexMap[state.currentPage];
   
@@ -104,10 +107,13 @@ export function updateLeveling() {
   }
 
   // 3. Calculate difficulty-based XP
-  const xp = difficulty;
-  state.xp += xp;
+  const gainedXp = difficulty;
+
+  state.xp += gainedXp;
+  state.sessionXp += gainedXp;
   // 3.5: Save XP + level to chrome.storage.sync
   chrome.storage.sync.set({
+    sessionXp: state.sessionXp,
     xp: state.xp,
     level: state.level
   }, () => {
@@ -132,14 +138,55 @@ export function updateLeveling() {
 
 //Navigation, Moves forward/backward through pages using the index map.
 export function nextPage() {
+  console.log(
+    "[NEXT PAGE] Before:",
+    state.currentPage,
+    "/",
+    state.pageIndexMap.length - 1
+  );
+    
   if (state.currentPage < state.pageIndexMap.length - 1) {
-    state.lastInteraction = Date.now(); // user interacted
-    console.log("[READER] Interaction: nextPage → lastInteraction:", state.lastInteraction);
-
+    state.lastInteraction = Date.now();
+    
     state.paragraphSwitches++;
+    state.wordsReadSoFar += state.currentWords;
     state.currentPage++;
-    updateLeveling(); // award XP + check level
-    setActiveParagraph();
+    chrome.storage.sync.set({
+      wordsReadSoFar: state.wordsReadSoFar,
+    });
+    state.percentComplete =
+    (
+      ((state.currentPage + 1) /
+        state.pageIndexMap.length)
+      * 100
+    );
+    
+    chrome.storage.sync.set({
+      readingActive: true,
+      sessionXp: state.sessionXp,
+      wordsReadSoFar: state.wordsReadSoFar,
+      percentComplete: state.percentComplete,
+    });
+
+      updateLeveling();
+      setActiveParagraph();
+
+      state.currentWords =
+      state.currentChunk
+        .join(" ")
+        .split(/\s+/)
+        .filter(Boolean)
+        .length;
+
+      chrome.storage.sync.set({
+        currentWords: state.currentWords,
+      });
+   } else {
+      console.log(
+        "[SUMMARY] Showing summary"
+      );
+
+    showSummaryPage();
   }
 }
 

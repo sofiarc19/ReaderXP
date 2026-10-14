@@ -26,17 +26,9 @@
     {
       "matches": ["*://*/*"],
       "js": ["dist/content.js"],
-      "css": ["styles.css"],
       "run_at": "document_start",
       "all_frames": true,
       "match_about_blank": true
-    }
-  ],
-
-  "web_accessible_resources": [
-    {
-      "resources": ["styles.css"],
-      "matches": ["*://*/*"]
     }
   ]
 }

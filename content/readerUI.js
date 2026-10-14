@@ -78,12 +78,44 @@ export function injectReaderArea() {
   bar.classList.add("extension-theme");
 
   bar.innerHTML = `
-    <div id="reader-area-header">
-      <div id="reader-progress"></div>
-      <button id="btn-prev">Previous</button>
-      <button id="btn-next">Next</button>
+    <div id="reader-page">
+      <div id="reader-area-header">
+        <span id="reader-status">Reading now</span>
+        <button id="reader-aa">Aa</button>
+  
+        <div class="mini-progress">
+          <div id="reader-progress"></div>
+        </div>
+        <div class="reader-session-actions">
+          <button id="reader-pause">Pause</button>
+          <button id="reader-bookmark">Pause & bookmark</button>
+          <button id="reader-resume" class="hidden">Resume</button>
+          <button id="reader-finish">Finish</button>
+          
+          <button id="btn-prev">Previous</button>
+          <button id="btn-next">Next</button>
+        </div>
+      </div>
+      <div id="reader-active"></div>
     </div>
-    <div id="reader-active"></div>
+    <div id="reader-paused" class="hidden">
+      <div class="paused-content">
+        <h1>Reading Paused</h1>
+        <p> Your reading session is currently paused. </p>
+        <p> Would you like to continue where you left off? </p>
+        <div class="paused-actions">
+          <button id="paused-resume-btn">
+            Resume Reading
+          </button>
+          <button id="paused-finish-btn">
+            Finish Session
+          </button>
+        </div>
+      </div>
+    </div>
+      <div id="reader-summary" class="hidden">
+        <div id="summary-content"></div>
+      </div>
   `;
 
   // Attach to <html> so blur mode can hide the entire page cleanly

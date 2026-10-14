@@ -251,6 +251,22 @@
     timeStarted: null,
     timeSpentMs: 0,
     lastInteraction: Date.now(),
+    // Session tracking
+    sessionStartedAt: null,
+    totalSessionTime: 0,
+    pausedAt: null,
+    isPaused: false,
+    totalPausedMs: 0,
+    sessionXp: 0,
+    levelAtStart: 1,
+    totalWordsRead: 0,
+    wordsReadSoFar: 0,
+    currentWords: 0,
+    percentComplete: 0,
+    sessionStatus: "completed",
+    sessionCategory: "Reading",
+    sessionTags: [],
+    sessionNotes: [],
     // Reader progress
     paragraphSwitches: 0,
     // Track which paragraphs have already given XP
@@ -271,6 +287,187 @@
       theme: "theme-dark"
     }
   };
+
+  // content/sessions.js
+  function buildReadingSession2(state2) {
+    return {
+      id: crypto.randomUUID(),
+      title: document.title,
+      url: window.location.href,
+      startedAt: state2.sessionStartedAt,
+      endedAt: Date.now(),
+      totalTimeMs: state2.totalSessionTime,
+      articleWords: state2.totalWordsRead,
+      wordsRead: state2.wordsReadSoFar,
+      percentComplete: state2.percentComplete,
+      status: state2.sessionStatus || "completed",
+      xpGained: state2.sessionXp,
+      levelAtStart: state2.levelAtStart,
+      levelAtEnd: state2.level,
+      paragraphsRead: state2.paragraphSwitches,
+      topicId: null,
+      topicId: null,
+      topicName: state2.sessionCategory || null,
+      tags: [...state2.sessionTags],
+      notes: [...state2.sessionNotes]
+    };
+  }
+  function saveReadingSession2(session) {
+    chrome.storage.sync.get(["history"], (data) => {
+      const history = data.history || [];
+      const MAX_HISTORY = 100;
+      history.unshift(session);
+      if (history.length > MAX_HISTORY) {
+        history.length = MAX_HISTORY;
+      }
+      chrome.storage.sync.set({ history }, () => {
+        console.log(
+          "[SESSIONS] Saved reading session:",
+          session
+        );
+      });
+    });
+  }
+
+  // content/blur.js
+  var blurEnabled = false;
+  function toggleBlur() {
+    blurEnabled = !blurEnabled;
+    if (blurEnabled) {
+      document.body.classList.add("fr-blur-all");
+    } else {
+      document.body.classList.remove("fr-blur-all");
+      const bar = document.getElementById("reader-area-bar");
+      if (bar) bar.remove();
+    }
+  }
+  function startObserver() {
+    function attachObserver() {
+      if (!document.body) {
+        setTimeout(attachObserver, 50);
+        return;
+      }
+      let scheduled = false;
+      const observer = new MutationObserver(() => {
+        if (scheduled) return;
+        scheduled = true;
+        setTimeout(() => {
+          scheduled = false;
+        }, 100);
+      });
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    }
+    attachObserver();
+  }
+
+  // content/summary.js
+  function showSummaryPage() {
+    chrome.storage.sync.set({
+      readingActive: false,
+      sessionXp: state.sessionXp,
+      wordsReadSoFar: state.wordsReadSoFar,
+      percentComplete: state.percentComplete
+    });
+    chrome.storage.sync.set({
+      readingActive: false,
+      isPaused: false
+    });
+    state.isPaused = false;
+    state.pausedAt = null;
+    state.totalSessionTime = Date.now() - state.sessionStartedAt - state.totalPausedMs;
+    const session = buildReadingSession2(state);
+    if (state.idleIntervalId) {
+      clearInterval(state.idleIntervalId);
+      state.idleIntervalId = null;
+    }
+    saveReadingSession2(session);
+    const totalSeconds = Math.floor(session.totalTimeMs / 1e3);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor(totalSeconds % 3600 / 60);
+    const seconds = totalSeconds % 60;
+    const formattedTime = hours > 0 ? `${hours}h ${minutes}m ${seconds}s` : `${minutes}m ${seconds}s`;
+    document.getElementById("reader-page")?.classList.add("hidden");
+    document.getElementById("reader-summary")?.classList.remove("hidden");
+    document.getElementById("summary-content").innerHTML = `
+  
+    <div class="summary-header">
+      <h1>Reading Summary</h1>
+      <p>Your session has been saved.</p>
+    </div>
+
+    <div class="summary-stats">
+
+      <div class="summary-stat">
+        <span>Title</span>
+        <strong>${session.title}</strong>
+      </div>
+
+      <div class="summary-stat">
+        <span>XP Gained</span>
+        <strong>${session.xpGained}</strong>
+      </div>
+
+      <div class="summary-stat">
+        <span>Words Read</span>
+        <strong>${session.totalWords}</strong>
+      </div>
+
+      <div class="summary-stat">
+        <span>Time Reading</span>
+        <strong>${formattedTime}</strong>
+      </div>
+
+      <div class="summary-stat">
+        <span>Progress</span>
+        <strong>${(session.percentComplete || 0).toFixed(1)}%</strong>
+      </div>
+
+    </div>
+
+    <div class="summary-actions">
+
+      <button id="summary-save-topic">
+        Save to Topic
+      </button>
+
+      <button id="summary-finish-reading">
+        Finish Reading Session
+      </button>
+
+      <button id="summary-pet-shop">
+        Go To Pet Shop
+      </button>
+
+      <button id="summary-close-btn">
+        Close
+      </button>
+
+    </div>
+
+    <div id="summary-topic-picker" class="hidden"></div>
+  `;
+    document.getElementById("summary-finish-reading")?.addEventListener("click", () => {
+      toggleBlur();
+      document.getElementById("reader-area-bar")?.remove();
+    });
+    document.getElementById("summary-close-btn")?.addEventListener("click", () => {
+      chrome.storage.sync.set({
+        readingActive: false
+      });
+      toggleBlur();
+      document.getElementById("reader-area-bar")?.remove();
+    });
+    document.getElementById("summary-pet-shop")?.addEventListener("click", () => {
+      toggleBlur();
+      document.getElementById("reader-area-bar")?.remove();
+      console.log(
+        "[SUMMARY] Open pet shop later"
+      );
+    });
+  }
 
   // content/pagination.js
   var SHORT_THRESHOLD = 300;
@@ -307,6 +504,7 @@
   function setActiveParagraph() {
     if (state.allSentences.length === 0) {
       state.allSentences = extractSentences();
+      state.totalWordsRead = state.allSentences.join(" ").split(/\s+/).filter(Boolean).length;
     }
     if (state.pageIndexMap.length === 0) {
       state.pageIndexMap = buildPageIndexMap();
@@ -333,9 +531,11 @@
       console.log("[LEVEL] No XP: user did not spend enough time.");
       return;
     }
-    const xp = difficulty;
-    state.xp += xp;
+    const gainedXp = difficulty;
+    state.xp += gainedXp;
+    state.sessionXp += gainedXp;
     chrome.storage.sync.set({
+      sessionXp: state.sessionXp,
       xp: state.xp,
       level: state.level
     }, () => {
@@ -351,13 +551,38 @@
     state.timeStarted = Date.now();
   }
   function nextPage() {
+    console.log(
+      "[NEXT PAGE] Before:",
+      state.currentPage,
+      "/",
+      state.pageIndexMap.length - 1
+    );
     if (state.currentPage < state.pageIndexMap.length - 1) {
       state.lastInteraction = Date.now();
-      console.log("[READER] Interaction: nextPage \u2192 lastInteraction:", state.lastInteraction);
       state.paragraphSwitches++;
+      state.wordsReadSoFar += state.currentWords;
       state.currentPage++;
+      chrome.storage.sync.set({
+        wordsReadSoFar: state.wordsReadSoFar
+      });
+      state.percentComplete = (state.currentPage + 1) / state.pageIndexMap.length * 100;
+      chrome.storage.sync.set({
+        readingActive: true,
+        sessionXp: state.sessionXp,
+        wordsReadSoFar: state.wordsReadSoFar,
+        percentComplete: state.percentComplete
+      });
       updateLeveling();
       setActiveParagraph();
+      state.currentWords = state.currentChunk.join(" ").split(/\s+/).filter(Boolean).length;
+      chrome.storage.sync.set({
+        currentWords: state.currentWords
+      });
+    } else {
+      console.log(
+        "[SUMMARY] Showing summary"
+      );
+      showSummaryPage();
     }
   }
   function prevPage() {
@@ -442,12 +667,44 @@
     bar.id = "reader-area-bar";
     bar.classList.add("extension-theme");
     bar.innerHTML = `
-    <div id="reader-area-header">
-      <div id="reader-progress"></div>
-      <button id="btn-prev">Previous</button>
-      <button id="btn-next">Next</button>
+    <div id="reader-page">
+      <div id="reader-area-header">
+        <span id="reader-status">Reading now</span>
+        <button id="reader-aa">Aa</button>
+  
+        <div class="mini-progress">
+          <div id="reader-progress"></div>
+        </div>
+        <div class="reader-session-actions">
+          <button id="reader-pause">Pause</button>
+          <button id="reader-bookmark">Pause & bookmark</button>
+          <button id="reader-resume" class="hidden">Resume</button>
+          <button id="reader-finish">Finish</button>
+          
+          <button id="btn-prev">Previous</button>
+          <button id="btn-next">Next</button>
+        </div>
+      </div>
+      <div id="reader-active"></div>
     </div>
-    <div id="reader-active"></div>
+    <div id="reader-paused" class="hidden">
+      <div class="paused-content">
+        <h1>Reading Paused</h1>
+        <p> Your reading session is currently paused. </p>
+        <p> Would you like to continue where you left off? </p>
+        <div class="paused-actions">
+          <button id="paused-resume-btn">
+            Resume Reading
+          </button>
+          <button id="paused-finish-btn">
+            Finish Session
+          </button>
+        </div>
+      </div>
+    </div>
+      <div id="reader-summary" class="hidden">
+        <div id="summary-content"></div>
+      </div>
   `;
     document.documentElement.appendChild(bar);
     document.getElementById("btn-next").addEventListener("click", nextPage);
@@ -465,40 +722,6 @@
     });
   }
 
-  // content/blur.js
-  var blurEnabled = false;
-  function toggleBlur() {
-    blurEnabled = !blurEnabled;
-    if (blurEnabled) {
-      document.body.classList.add("fr-blur-all");
-    } else {
-      document.body.classList.remove("fr-blur-all");
-      const bar = document.getElementById("reader-area-bar");
-      if (bar) bar.remove();
-    }
-  }
-  function startObserver() {
-    function attachObserver() {
-      if (!document.body) {
-        setTimeout(attachObserver, 50);
-        return;
-      }
-      let scheduled = false;
-      const observer = new MutationObserver(() => {
-        if (scheduled) return;
-        scheduled = true;
-        setTimeout(() => {
-          scheduled = false;
-        }, 100);
-      });
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true
-      });
-    }
-    attachObserver();
-  }
-
   // content/messaging.js
   function setupMessaging() {
     const api = globalThis.browser || globalThis.chrome;
@@ -510,38 +733,132 @@
           return false;
         case "start-reader":
           chrome.storage.sync.get(["xp", "level"], (data) => {
-            if (data.xp !== void 0) state.xp = data.xp;
-            if (data.level !== void 0) state.level = data.level;
-            console.log("[LEVEL] Loaded XP + Level:", state.xp, state.level);
-            console.log(
-              "[CONTENT] Starting reader, selectedText length:",
-              msg.selectedText ? msg.selectedText.length : 0
-            );
-            state.timeStarted = Date.now();
-            console.log("[READER] Started at:", state.timeStarted);
-            state.lastInteraction = Date.now();
-            console.log("[READER] Initial lastInteraction:", state.lastInteraction);
-            if (msg.settings) {
-              Object.assign(state.readerSettings, msg.settings);
+            try {
+              if (data.xp !== void 0) state.xp = data.xp;
+              if (data.level !== void 0) state.level = data.level;
+              console.log("[LEVEL] Loaded XP + Level:", state.xp, state.level);
+              console.log(
+                "[CONTENT] Starting reader, selectedText length:",
+                msg.selectedText ? msg.selectedText.length : 0
+              );
+              state.sessionStartedAt = Date.now();
+              state.pausedAt = null;
+              state.isPaused = false;
+              state.totalPausedMs = 0;
+              state.totalSessionTime = 0;
+              state.articleTitle = document.title;
+              state.wordsReadSoFar = 0;
+              state.currentWords = 0;
+              state.levelAtStart = state.level;
+              state.sessionXp = 0;
+              state.percentComplete = 0;
+              state.paragraphSwitches = 0;
+              state.sessionNotes = [];
+              state.sessionTags = [];
+              state.paragraphXpMap.clear();
+              chrome.storage.sync.set({
+                readingActive: true,
+                sessionStartedAt: state.sessionStartedAt,
+                articleTitle: document.title,
+                sessionXp: 0,
+                wordsReadSoFar: 0,
+                currentWords: 0,
+                percentComplete: 0,
+                totalPausedMs: 0,
+                isPaused: false
+              });
+              state.timeStarted = Date.now();
+              state.lastInteraction = Date.now();
+              console.log("[READER] Started at:", state.timeStarted);
+              if (state.idleIntervalId) {
+                clearInterval(state.idleIntervalId);
+              }
+              state.idleIntervalId = setInterval(() => {
+                const idleMs = Date.now() - state.lastInteraction;
+                console.log(
+                  "[READER] Idle check:",
+                  idleMs,
+                  "ms"
+                );
+                if (idleMs > 45e3) {
+                  console.log(
+                    "[READER] User idle too long"
+                  );
+                }
+              }, 5e3);
+              if (msg.settings) {
+                Object.assign(state.readerSettings, msg.settings);
+              }
+              toggleBlur();
+              if (!blurEnabled) {
+                sendResponse({ ok: true, active: false });
+                return;
+              }
+              injectReaderArea();
+              const manual = msg.selectedText?.trim();
+              if (manual && manual.length > 0) {
+                state.allSentences = extractSentencesFromText(manual);
+              } else {
+                state.allSentences = extractSentences();
+              }
+              state.pageIndexMap = buildPageIndexMap();
+              state.currentPage = 0;
+              updateReaderStyle();
+              setActiveParagraph();
+              sendResponse({
+                ok: true,
+                active: true
+              });
+            } catch (err) {
+              console.error("[CONTENT] start-reader error:", err);
+              sendResponse({
+                ok: false,
+                error: err.message
+              });
             }
-            toggleBlur();
-            if (!blurEnabled) {
-              sendResponse({ ok: true, active: false });
-              return false;
-            }
-            injectReaderArea();
-            const manual = msg.selectedText?.trim();
-            if (manual && manual.length > 0) {
-              state.allSentences = extractSentencesFromText(manual);
-            } else {
-              state.allSentences = extractSentences();
-            }
-            state.pageIndexMap = buildPageIndexMap();
-            state.currentPage = 0;
-            updateReaderStyle();
-            setActiveParagraph();
-            sendResponse({ ok: true, active: true });
           });
+          return true;
+        case "next-page":
+          nextPage();
+          sendResponse({ ok: true });
+          break;
+        case "pause-reader":
+          state.isPaused = true;
+          state.pausedAt = Date.now();
+          showPausedPage();
+          chrome.storage.sync.set({
+            isPaused: true
+          });
+          sendResponse({ ok: true });
+          break;
+        case "resume-reader":
+          if (state.pausedAt) {
+            const pausedDuration = Date.now() - state.pausedAt;
+            state.totalPausedMs += pausedDuration;
+          }
+          state.pausedAt = null;
+          state.isPaused = false;
+          chrome.storage.sync.set({
+            isPaused: false,
+            totalPausedMs: state.totalPausedMs,
+            readingActive: true
+          });
+          sendResponse({ ok: true });
+          break;
+        case "finish-reader":
+          console.log("[READER] Finish clicked");
+          state.sessionStatus = "completed";
+          showSummaryPage();
+          sendResponse({ ok: true });
+          chrome.storage.sync.set({
+            readingActive: false
+          });
+          break;
+        case "bookmark-reader":
+          state.sessionStatus = "bookmarked";
+          saveReadingSession(
+            buildReadingSession(state)
+          );
           break;
         case "set-basic-font":
           state.readerSettings.font = msg.value;
@@ -567,17 +884,13 @@
           console.log("[CONTENT] Unknown action:", msg.action);
           break;
       }
-      return false;
+      return true;
     });
     console.log("[CONTENT] Messaging ready");
   }
 
   // content/content.js
   console.log("CONTENT SCRIPT LOADED");
-  setInterval(() => {
-    const idleMs = Date.now() - state.lastInteraction;
-    console.log("[READER] Idle check:", idleMs, "ms");
-  }, 5e3);
   globalThis.browser = globalThis.browser || globalThis.chrome;
   function init() {
     startObserver();

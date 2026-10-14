@@ -9,6 +9,28 @@ export const state = {
   timeSpentMs: 0,
   lastInteraction: Date.now(),
 
+  // Session tracking
+  sessionStartedAt: null,
+  totalSessionTime: 0,
+  pausedAt: null,
+  isPaused: false,
+  totalPausedMs: 0,
+
+  sessionXp: 0,
+  levelAtStart: 1,
+
+  totalWordsRead: 0,
+  wordsReadSoFar: 0,
+  currentWords: 0,
+
+  percentComplete: 0,
+
+  sessionStatus: "completed",
+  sessionCategory: "Reading",
+
+  sessionTags: [],
+  sessionNotes: [],
+
   // Reader progress
   paragraphSwitches: 0,
 

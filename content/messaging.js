@@ -5,7 +5,8 @@ import {
 import { injectReaderArea, updateReaderStyle } from "./readerUI.js";
 import { toggleBlur, blurEnabled } from "./blur.js";
 import { state } from "./state.js";
-import { buildPageIndexMap, setActiveParagraph } from "./pagination.js";
+import { buildPageIndexMap, setActiveParagraph, nextPage } from "./pagination.js";
+import { showSummaryPage } from "./summary.js";
 
 export function setupMessaging() {
   // Normalize extension API between Chrome (chrome) and Firefox (browser)
@@ -22,62 +23,184 @@ export function setupMessaging() {
 
       case "start-reader":
         chrome.storage.sync.get(["xp", "level"], (data) => {
-          if (data.xp !== undefined) state.xp = data.xp;
-          if (data.level !== undefined) state.level = data.level;
+          try {
+            if (data.xp !== undefined) state.xp = data.xp;
+            if (data.level !== undefined) state.level = data.level;
 
-          console.log("[LEVEL] Loaded XP + Level:", state.xp, state.level);
+            console.log("[LEVEL] Loaded XP + Level:", state.xp, state.level);
 
-          console.log(
-            "[CONTENT] Starting reader, selectedText length:",
-            msg.selectedText ? msg.selectedText.length : 0,
-          );
+            console.log(
+              "[CONTENT] Starting reader, selectedText length:",
+              msg.selectedText ? msg.selectedText.length : 0,
+            );
 
-          // Start timing the reading session
-          state.timeStarted = Date.now();
-          console.log("[READER] Started at:", state.timeStarted);
+            state.sessionStartedAt = Date.now();
+            state.pausedAt = null;
+            state.isPaused = false;
+            state.totalPausedMs = 0;
+            state.totalSessionTime = 0;
 
-          // Track last interaction time for idle detection
-          state.lastInteraction = Date.now();
-          console.log("[READER] Initial lastInteraction:", state.lastInteraction);
+            state.articleTitle = document.title;
+            state.wordsReadSoFar = 0;
+            state.currentWords = 0;
+            
+            state.levelAtStart = state.level;
+            state.sessionXp = 0;
 
-          // Apply any reader settings sent from popup
-          if (msg.settings) {
-            Object.assign(state.readerSettings, msg.settings);
-          }
+            state.percentComplete = 0;
+            state.paragraphSwitches = 0;
 
-          // Toggle blur mode (enables/disables reader)
-          toggleBlur();
-          if (!blurEnabled) {
-            // Reader was closed instead of opened
-            sendResponse({ ok: true, active: false });
-            return false;
-          }
+            state.sessionNotes = [];
+            state.sessionTags = [];
 
-          // Insert reader UI into the page
-          injectReaderArea();
+            state.paragraphXpMap.clear();
 
-          // Use manually selected text if provided
-          const manual = msg.selectedText?.trim();
-          if (manual && manual.length > 0) {
-            state.allSentences = extractSentencesFromText(manual);
-          } else {
-            // Otherwise extract sentences from the page
-            state.allSentences = extractSentences();
-          }
+            chrome.storage.sync.set({
+              readingActive: true,
+              sessionStartedAt: state.sessionStartedAt,
+              articleTitle: document.title,
 
-          // Build pagination structure for reader
-          state.pageIndexMap = buildPageIndexMap();
-          state.currentPage = 0;
+              sessionXp: 0,
+              wordsReadSoFar: 0,
+              currentWords: 0,
 
-          // Apply styling + highlight first paragraph
-          updateReaderStyle();
-          setActiveParagraph();
+              percentComplete: 0,
 
-          sendResponse({ ok: true, active: true });
-        });
+              totalPausedMs: 0,
+              isPaused: false,
+            });
+
+            // Start timing the reading session
+            state.timeStarted = Date.now();
+            state.lastInteraction = Date.now();
+            console.log("[READER] Started at:", state.timeStarted);
+
+            // Track last interaction time for idle detection
+            if (state.idleIntervalId) {
+              clearInterval(state.idleIntervalId);
+            }
+
+            state.idleIntervalId = setInterval(() => {
+              const idleMs =
+                Date.now() - state.lastInteraction;
+              console.log(
+                "[READER] Idle check:",
+                idleMs,
+                "ms"
+              );
+
+              if (idleMs > 45000) {
+                console.log(
+                  "[READER] User idle too long"
+                );
+              }
+            }, 5000);
+
+            // Apply any reader settings sent from popup
+            if (msg.settings) {
+              Object.assign(state.readerSettings, msg.settings);
+            }
+
+            // Toggle blur mode (enables/disables reader)
+            toggleBlur();
+            if (!blurEnabled) {
+              // Reader was closed instead of opened
+              sendResponse({ ok: true, active: false });
+              return;
+            }
+
+            // Insert reader UI into the page
+            injectReaderArea();
+
+            // Use manually selected text if provided
+            const manual = msg.selectedText?.trim();
+            if (manual && manual.length > 0) {
+              state.allSentences = extractSentencesFromText(manual);
+            } else {
+              // Otherwise extract sentences from the page
+              state.allSentences = extractSentences();
+            }
+            
+            // Build pagination structure for reader
+            state.pageIndexMap = buildPageIndexMap();
+            state.currentPage = 0;
+
+            // Apply styling + highlight first paragraph
+            updateReaderStyle();
+            setActiveParagraph();
+            sendResponse({
+              ok: true,
+              active: true,
+            });
+          } catch (err) {
+            console.error("[CONTENT] start-reader error:", err);
+          
+          sendResponse({
+          ok: false,
+          error: err.message,
+          });
+        }
+      });
         
+      return true;
+        
+      case "next-page":
+        nextPage();        // move to next paragraph
+        sendResponse({ ok: true });
+        break;
+
+      case "pause-reader":
+        state.isPaused = true;
+        state.pausedAt = Date.now();
+        showPausedPage();
+        chrome.storage.sync.set({
+          isPaused: true,
+        });
+
+        sendResponse({ ok: true });
+        break;
+
+      case "resume-reader":
+        if (state.pausedAt) {
+          const pausedDuration =
+            Date.now() - state.pausedAt;
+
+          state.totalPausedMs += pausedDuration;
+        }
+
+        state.pausedAt = null;
+        state.isPaused = false;
+
+        chrome.storage.sync.set({
+          isPaused: false,
+          totalPausedMs: state.totalPausedMs,
+          readingActive: true,
+        });
+
+        sendResponse({ ok: true });
+
         break;
         
+      case "finish-reader":
+        console.log("[READER] Finish clicked");
+        state.sessionStatus = "completed";
+        showSummaryPage();
+        sendResponse({ ok: true });
+        chrome.storage.sync.set({
+          readingActive: false,
+        });
+        break;
+
+      case "bookmark-reader":
+        state.sessionStatus =
+          "bookmarked";
+
+        saveReadingSession(
+          buildReadingSession(state)
+        );
+
+        break;
+
       case "set-basic-font":
         state.readerSettings.font = msg.value;
         updateReaderStyle();
@@ -107,7 +230,7 @@ export function setupMessaging() {
         break;
     }
 
-    return false; // Required for async sendResponse in MV3
+    return true; 
   });
 
   console.log("[CONTENT] Messaging ready");

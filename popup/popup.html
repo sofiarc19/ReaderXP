@@ -1,26 +1,45 @@
 <!DOCTYPE html>
-<html lang="en" class="extension-theme">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Extension Popup</title>
-    <link rel="stylesheet" href="../styles.css">
+  <meta charset="UTF-8" />
+  <title>Focus Reader Popup</title>
+  <link rel="stylesheet" href="../css/popup.css" />
 </head>
 
 <body>
+  <section class="reader-popover" aria-label="Reading companion">
 
-    <div id="extension-box">
-        <div class="extension-box-inner">
-            <header class="extension-box-header">
-                <button id="btn-play">▶</button>
-                <button id="btn-customize">Customize</button>
-                <button id="btn-three">Three</button>
-                <button id="btn-four">Four</button>
-                <button id="btn-five">Five</button>
-            </header>
+    <!-- Header -->
+    <div class="popover-header">
+      <div>
+        <span class="popover-kicker">Focus Reader</span>
+        <strong>Quick view</strong>
+      </div>
+      <button aria-label="Close reading companion" class="popover-close" id="closePopover">×</button>
+    </div>
 
-            <div class="fr-panel" id="panel-customize">
-                <div class="font-row">
-                    <label for="font-select">Basic Font Style</label>
+    <!-- Tabs -->
+    <div class="popover-tabs" role="tablist" aria-label="Companion views">
+      <button class="active" role="tab" data-tab="reader">Reader</button>
+      <button role="tab" data-tab="sessions">Reading sessions</button>
+      <button role="tab" data-tab="pet">Pet</button>
+      <button role="tab" data-tab="shop">Shop</button>
+    </div>
+
+     <!-- READER SETTINGS PANEL -->
+    <div class="reader-view tab-panel" data-panel="reader">
+
+        <!-- BEFORE READING STARTS -->
+        <div id="reader-prestart">
+            <div class="reader-ready">
+                <span>Ready to focus?</span>
+                <strong>PlaceHolder</strong>
+                <small>Info</small>
+            </div>
+
+            <div class="reader-settings">
+                <label>
+                    <span>Font style</span>
                     <select id="font-select">
                         <option value="sans-serif">Sans Serif</option>
                         <option value="serif">Serif</option>
@@ -28,33 +47,174 @@
                         <option value="Comic Sans MS">Comic Sans MS</option>
                         <option value="Times New Roman">Times New Roman</option>
                     </select>
-                    <label><input type="checkbox" id="set-bionic">Bionic Reading</label>
-                </div>
-                <div class="font-row">
-                    <label for="font-size">Font Size</label>
+                </label>
+
+                <label>
+                    <span>Font size</span>
                     <select id="font-size">
-                        <option value=14>Small</option>
-                        <option value=16>Medium</option>
-                        <option value=18>Large</option>
-                        <option value=20>Extra Large</option>
+                        <option value="14">Small</option>
+                        <option value="16" selected>Medium</option>
+                        <option value="18">Large</option>
+                        <option value="20">Extra Large</option>
                     </select>
-                </div>
-                <div class="font-row">
-                    <label for="color-theme">Color Themes</label>
+                </label>
+
+                <label>
+                    <span>Color theme</span>
                     <select id="color-theme">
-                         <option value="theme-dark">Dark</option>
-                        <option value="theme-light">Light</option>
-                        <option value="theme-forest">Forest</option>
+                    <option value="theme-dark">Dark</option>
+                    <option value="theme-light">Light</option>
+                    <option value="theme-forest">Forest</option>
                     </select>
-                </div>
+                </label>
+
+                <label class="toggle-row">
+                    <span>
+                    <strong>Bionic reading</strong>
+                    <small>Emphasize the start of words</small>
+                    </span>
+                    <button id="set-bionic" class="toggle"><i></i></button>
+                </label>
             </div>
 
-            <div class="fr-panel" id="panel-three"></div>
-            <div class="fr-panel" id="panel-four"></div>
-            <div class="fr-panel" id="panel-five"></div>
+            <button class="start-reading-button" id="btn-play">
+                <span>▶</span>
+                Start reading
+            </button>
         </div>
+
+        <!-- AFTER READING STARTS -->
+        <div id="reader-active-popup" class="hidden">
+
+            <div id="reader-session-head">
+            <span id="reader-status">Reading now</span>
+            <button id="reader-aa">Aa</button>
+            </div>
+
+            <div class="mini-progress">
+                <span id="reader-progress-popup"></span>
+            </div>
+
+            <div class="mini-stats">
+                <div><span>Time: </span><strong id="reader-time-popup"></strong></div>
+                <div><span>Words: </span><strong id="reader-words-popup"></strong></div>
+                <div><span>XP: </span><strong id="reader-xp-popup"> + </strong></div>
+            </div>
+
+            <div class="reader-session-actions">
+                <button id="reader-pause-popup">Pause reading</button>
+                <button id="reader-bookmark-popup">Pause & bookmark</button>
+                <button id="reader-resume-popup" class="hidden">Resume</button>
+                <button id="reader-finish-popup">Finish session</button>
+            </div>
+        </div>
+
     </div>
 
-    <script src="popup.js"></script>
+    <!-- PET PANEL -->
+    <div class="pet-view tab-panel hidden" data-panel="pet">
+      <div class="pet-topline">
+        <span>Your reading buddy</span>
+        <span class="coin-count"><i>$</i> ??</span>
+      </div>
+
+      <div class="pet-stage">
+        <span class="pet-level">Level ?</span>
+        <svg class="pet-art" viewBox="0 0 180 150">
+        </svg>
+      </div>
+
+      <div class="pet-title">
+        <div>
+          <strong>Pet</strong>
+          <span id="petStatus">Wants to learn with you</span>
+        </div>
+        <span class="mood-pill" id="petMood">Current Mood</span>
+      </div>
+
+      <div class="pet-meter">
+        <div>
+          <span>Growth</span>
+          <strong>680 / 800 XP</strong>
+        </div>
+        <div class="pet-progress"><span></span></div>
+      </div>
+
+      <div class="pet-needs">
+        <div><span>Hunger</span><i><b style="width:72%"></b></i><small>72%</small></div>
+        <div><span>Mood</span><i><b style="width:90%"></b></i><small>90%</small></div>
+        <div><span>Hygiene</span><i><b style="width:64%"></b></i><small>64%</small></div>
+        <div><span>Social</span><i><b style="width:80%"></b></i><small>80%</small></div>
+        <div><span>Energy</span><i><b style="width:58%"></b></i><small>58%</small></div>
+      </div>
+
+      <div class="pet-actions">
+        <button id="carePet">Care for Pet</button>
+        <button data-tab-switch="shop">Go to shop</button>
+      </div>
+    </div>
+
+    <!-- READING SESSIONS PANEL -->
+    <div class="topics-view tab-panel hidden" data-panel="sessions">
+
+      <div class="topics-heading">
+        <div>
+          <strong>Reading Sessions</strong>
+          <span>Your saved reading history</span>
+        </div>
+
+        <button id="refreshHistory">
+          Refresh
+        </button>
+        <button id="addTopic">
+          Add Topic
+        </button>
+      </div>
+
+      <!-- Sessions injected by popup.js -->
+      <div class="topic-list" id="topicList">
+        <!-- renderTopicList() populates this -->
+      </div>
+
+      <div class="topic-current">
+        <span>Session Summary</span>
+        <strong id="topicNextTitle">
+          Select a session
+        </strong>
+        <small id="topicNextMeta">
+          Session details will appear here
+        </small>
+      </div>
+
+    </div>
+
+    <!-- SHOP PANEL -->
+    <div class="shop-view tab-panel hidden" data-panel="shop">
+      <div class="shop-heading">
+        <div>
+          <strong>Pet Suppply Shop</strong>
+          <span>Pick up something for your buddy</span>
+        </div>
+        <span class="coin-count"><i>$</i> ??</span>
+      </div>
+
+      <div class="shop-categories">
+        <button class="active" data-shop="Food">Food</button>
+        <button data-shop="Toys">Toys</button>
+        <button data-shop="Hygiene">Hygiene</button>
+        <button data-shop="Accessories">Accessories</button>
+      </div>
+
+      <div class="shop-grid">
+        <button class="shop-item"><span>T</span><strong>Daily treat</strong><small><i>$</i>25</small></button>
+        <button class="shop-item"><span>P</span><strong>Premium pick</strong><small><i>$</i>60</small></button>
+        <button class="shop-item"><span>C</span><strong>Cozy favorite</strong><small><i>$</i>90</small></button>
+        <button class="shop-item"><span>?</span><strong>Surprise box</strong><small><i>$</i>120</small></button>
+      </div>
+
+      <p id="shopCategoryLabel">Showing food items</p>
+    </div>
+  </section>
+  <script src="popup.js"></script>
 </body>
 </html>

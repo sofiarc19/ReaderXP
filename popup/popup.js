@@ -2,6 +2,12 @@
 const api = typeof browser !== "undefined" ? browser : chrome;
 window.browser = api;
 
+//import { loadTopics } from "./sessions.js";
+
+// Utility selectors
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
 // Popup UI settings (synced to storage)
 let popupSettings = {
   font: "sans-serif",
@@ -9,6 +15,35 @@ let popupSettings = {
   theme: "theme-dark",
   bionic: false,
 };
+
+function renderTopicList(topics) {
+  const topicList = document.getElementById("topicList");
+
+  if (!topicList) return;
+
+  topicList.innerHTML = "";
+
+  topics.forEach((topic, index) => {
+    const btn = document.createElement("button");
+
+    btn.innerHTML = `
+      <span class="topic-dot topic-${index % 5}"></span>
+
+      <span>
+        <strong>${topic.name}</strong>
+        <small>
+          ${topic.readings.length} reading${topic.readings.length !== 1 ? "s" : ""}
+        </small>
+      </span>
+
+      <b>${topic.totalXp}</b>
+
+      <span>›</span>
+    `;
+
+    topicList.appendChild(btn);
+  });
+}
 
 // Get the currently active browser tab
 function getActiveTab() {
@@ -39,23 +74,32 @@ function sendMessageToTab(tabId, message) {
 // Ensure content script is injected before messaging
 async function ensureContentScript(tabId) {
   try {
-    // Ping first — if it responds, it's already injected
     await sendMessageToTab(tabId, { action: "ping" });
+
+    await api.scripting.insertCSS({
+      target: { tabId, allFrames: true },
+      files: ["css/readerArea.css"],
+    });
+
     return true;
   } catch (_) {
-    // Inject content script + CSS if missing
     try {
       await api.scripting.executeScript({
         target: { tabId, allFrames: true },
         files: ["dist/content.js"],
       });
+
       await api.scripting.insertCSS({
         target: { tabId, allFrames: true },
-        files: ["styles.css"],
+        files: ["css/readerArea.css"],
       });
+
       return true;
     } catch (injectErr) {
-      console.warn("[POPUP] Could not inject content script:", injectErr);
+      console.warn(
+        "[POPUP] Could not inject content script:",
+        injectErr
+      );
       return false;
     }
   }
@@ -96,14 +140,12 @@ function applyPopupTheme(themeName) {
   root.classList.remove(
     "theme-dark",
     "theme-light",
-    "theme-sepia",
-    "theme-amoled",
-    "theme-forest",
+    "theme-forest"
   );
   root.classList.add(themeName);
 }
 
-// Load saved settings (apply to popup UI only — page gets them on Play / change)
+//Load saved settings (apply to popup UI only — page gets them on Play / change)
 api.storage.sync.get(["font", "fontSize", "theme", "bionic"], (data) => {
   popupSettings.font = data.font || "sans-serif";
   popupSettings.fontSize = Number(data.fontSize) || 16;
@@ -114,107 +156,359 @@ api.storage.sync.get(["font", "fontSize", "theme", "bionic"], (data) => {
   document.getElementById("font-select").value = popupSettings.font;
   document.getElementById("font-size").value = popupSettings.fontSize;
   document.getElementById("color-theme").value = popupSettings.theme;
-  document.getElementById("set-bionic").checked = popupSettings.bionic;
-
+  const bionicBtn = document.getElementById("set-bionic");
+  if (popupSettings.bionic && bionicBtn) {
+    bionicBtn.classList.add("active");
+  }
+  
   applyPopupStyle();
   applyPopupTheme(popupSettings.theme);
 });
 
-// Show a specific popup panel
-function showPanel(id) {
+api.storage.sync.get(
+  ["readingActive"],
+  (data) => {
+
+    if (data.readingActive) {
+      $("#reader-prestart")
+        ?.classList.add("hidden");
+
+      $("#reader-active-popup")
+        ?.classList.remove("hidden");
+    }
+
+  }
+);
+
+// Tab Switching
+$$(".popover-tabs button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    $$(".popover-tabs button").forEach((b) =>
+      b.classList.remove("active")
+    );
+
+    btn.classList.add("active");
+    const tab = btn.dataset.tab;
+
+    $$(".tab-panel").forEach((panel) =>
+      panel.classList.add("hidden")
+    );
+    document.querySelector(`.tab-panel[data-panel="${tab}"]`)
+    ?.classList.remove("hidden");
+  });
+});
+
+// Reader Settings Events
+$("#font-select")?.addEventListener("change",
+  (e) => {
+    popupSettings.font = e.target.value;
+
+    api.storage.sync.set({
+      font: popupSettings.font,
+    });
+
+    applyPopupStyle();
+
+    sendToReader(
+      "set-basic-font",
+      popupSettings.font
+    );
+  }
+);
+
+$("#font-size")?.addEventListener("change",
+  (e) => {
+    popupSettings.fontSize =
+      Number(e.target.value);
+
+    api.storage.sync.set({
+      fontSize: popupSettings.fontSize,
+    });
+
+    applyPopupStyle();
+
+    sendToReader(
+      "set-font-size",
+      popupSettings.fontSize
+    );
+  }
+);
+
+$("#color-theme")?.addEventListener("change",
+  (e) => {
+    popupSettings.theme = e.target.value;
+
+    api.storage.sync.set({
+      theme: popupSettings.theme,
+    });
+
+    applyPopupTheme(
+      popupSettings.theme
+    );
+
+    sendToReader(
+      "set-theme",
+      popupSettings.theme
+    );
+  }
+);
+
+$("#set-bionic")?.addEventListener("click", () => {
+  popupSettings.bionic = !popupSettings.bionic;
+
+    $("#set-bionic").classList.toggle(
+      "active",
+      popupSettings.bionic
+    );
+
+    api.storage.sync.set({
+        bionic: popupSettings.bionic,
+    });
+
+    sendToReader(
+      "set-bionic",
+      popupSettings.bionic
+    );
+  }
+);
+
+// Start Reader
+$("#btn-play")?.addEventListener("click",
+  async () => {
+    let selectedText = "";
+
+    try {
+      selectedText =
+        await new Promise((resolve) => {
+          api.runtime.sendMessage(
+          { action: "get-selection" },
+          (response) => {
+            resolve(response?.text || "");
+          }
+        );
+      });
+    } catch (_) {}
+    const tab = await getActiveTab();
+
+    if (!tab?.id) return;
+    const ok = await ensureContentScript(tab.id);
+    if (!ok) return;
+    
+    try {
+      const response = await sendMessageToTab(tab.id, {
+        action: "start-reader",
+        selectedText,
+        settings: { ...popupSettings },
+      });
+      if (response?.ok) {
+        $("#reader-prestart")
+        ?.classList.add("hidden");
+
+        $("#reader-active-popup")
+        ?.classList.remove("hidden");
+
+        api.storage.sync.set({
+          readingActive: true,
+        });
+      }
+    } catch (err) {
+      console.warn("[POPUP] start-reader failed:", err.message);
+    }
+  }
+);
+
+// Active Reader Popup
+$("#reader-pause-popup")
+  ?.addEventListener("click", () => {
+    $("#reader-status").textContent = "Reading paused";
+    $("#reader-resume-popup")
+    ?.classList.remove("hidden");
+    sendToReader("pause-reader");
+    chrome.storage.sync.set({
+      isPaused: true,
+    });
+});
+
+$("#reader-resume-popup")
+  ?.addEventListener("click", () => {
+    $("#reader-status").textContent = "Reading now";
+    $("#reader-resume-popup")
+      ?.classList.add("hidden");
+  sendToReader("resume-reader");
+  chrome.storage.sync.set({
+    isPaused: false,
+  });
+});
+
+$("#reader-bookmark-popup")
+  ?.addEventListener("click", () => {
+    sendToReader("bookmark-reader");
+});
+
+$("#reader-finish-popup")
+  ?.addEventListener("click", () => {
+    sendToReader("finish-reader");
+});
+
+$("#reader-aa")?.addEventListener("click", () => {
   document
-    .querySelectorAll(".fr-panel")
-    .forEach((p) => (p.style.display = "none"));
-  const panel = document.getElementById(id);
-  if (panel) panel.style.display = "block";
+    .querySelector(".reader-settings")
+    ?.classList.toggle("hidden");
+});
+
+function updateReaderPopupStats() {
+  api.storage.sync.get(
+    [
+      "sessionXp",
+      "wordsReadSoFar",
+      "percentComplete",
+      "sessionStartedAt",
+      "readingActive",
+      "articleTitle",
+      "isPaused",
+      "totalPausedMs",
+    ],
+    (data) => {
+      
+      if (!data.readingActive) return;
+
+      const statusText = data.articleTitle
+        ? `Reading: ${data.articleTitle}`
+        : "Reading now";
+
+      const status = document.getElementById(
+        "reader-status"
+      );
+
+      if (data.isPaused) {
+        document.getElementById(
+          "reader-status"
+        ).textContent =
+          "Reading paused";
+      }
+      else if (status) {
+        status.textContent = statusText;
+      }
+
+      const xp = data.sessionXp || 0;
+      const words = data.wordsReadSoFar || 0;
+
+      let timeText = "00:00";
+
+      let elapsed = 0;
+
+      if (data.sessionStartedAt) {
+        elapsed = Math.floor(
+          (
+            Date.now()
+            - data.sessionStartedAt
+            - (data.totalPausedMs || 0)
+          ) / 1000
+        );
+      }
+
+      if (data.sessionStartedAt) {
+        const elapsed =
+          Math.floor(
+            (Date.now() - data.sessionStartedAt) / 1000
+          );
+
+        const mins =
+          String(Math.floor(elapsed / 60))
+            .padStart(2, "0");
+
+        const secs =
+          String(elapsed % 60)
+            .padStart(2, "0");
+
+        timeText = `${mins}:${secs}`;
+      }
+
+      document.getElementById(
+        "reader-time-popup"
+      ).textContent = timeText;
+
+      document.getElementById(
+        "reader-words-popup"
+      ).textContent = words.toLocaleString();
+
+      document.getElementById(
+        "reader-xp-popup"
+      ).textContent = `+${xp}`;
+
+      const progress =
+        data.percentComplete || 0;
+
+      document.getElementById(
+        "reader-progress-popup"
+      ).style.width = `${progress}%`;
+    }
+  );
 }
 
-// Default panel on load
+// Pet Panel
+$("#carePet")?.addEventListener("click",
+  () => {
+    const status = $("#petStatus");
+    const mood = $("#petMood");
+    
+    if (
+      status.textContent.includes(
+      "Wants")
+    ) {
+      status.textContent =
+      "Happy and ready to read";
+      mood.textContent = "Full";
+    } else {
+      status.textContent =
+      "Wants to learn with you";
+      mood.textContent = "Curious";
+    }
+  }
+);
+
+// Shop
+$$(".shop-categories button").forEach(
+  (btn) => {
+    btn.addEventListener("click", () => {
+      $$(".shop-categories button")
+        .forEach((b) =>
+          b.classList.remove("active")
+      );
+    
+      btn.classList.add("active");
+      const category = btn.dataset.shop.toLowerCase();
+      
+      $("#shopCategoryLabel").textContent =`Showing ${category} items`;
+    });
+  }
+);
+
+// Close
+$("#closePopover")?.addEventListener("click",
+  () => {
+    window.close();
+  }
+);
+
+// temp data 
 document.addEventListener("DOMContentLoaded", () => {
-  showPanel("panel-customize");
+  updateReaderPopupStats();
+
+  setInterval(() => {
+    updateReaderPopupStats();
+  }, 1000);
+
+  renderTopicList([
+    {
+      name: "Math",
+      readings: [{}, {}],
+      totalXp: 12,
+    },
+    {
+      name: "Personal",
+      readings: [{}, {}, {}],
+      totalXp: 7,
+    },
+  ]);
 });
-
-// Play button: start reader with selected text (if any)
-document.getElementById("btn-play").addEventListener("click", async () => {
-  let selectedText = "";
-  // Ask background script for selected text
-  try {
-    selectedText = await new Promise((resolve) => {
-      api.runtime.sendMessage({ action: "get-selection" }, (response) => {
-        if (api.runtime.lastError) {
-          resolve("");
-          return;
-        }
-        resolve(response?.text || "");
-      });
-    });
-  } catch (_) {}
-
-  const tab = await getActiveTab();
-  if (!tab?.id) {
-    console.warn("[POPUP] No active tab for Play");
-    return;
-  }
-  if (!/^https?:/.test(tab.url || "")) {
-    console.warn("[POPUP] Open a normal http(s) page, then try Play again.");
-    return;
-  }
-
-  const ok = await ensureContentScript(tab.id);
-  if (!ok) {
-    console.warn("[POPUP] Content script unavailable on", tab.url);
-    return;
-  }
-
-  // Start reader in the tab
-  try {
-    await sendMessageToTab(tab.id, {
-      action: "start-reader",
-      selectedText,
-      settings: { ...popupSettings },
-    });
-  } catch (err) {
-    console.warn("[POPUP] start-reader failed:", err.message);
-  }
-});
-
-// Panel switching buttons
-document.getElementById("btn-customize").addEventListener("click", () => {
-  showPanel("panel-customize");
-});
-
-// Font change
-document.getElementById("font-select").addEventListener("change", (e) => {
-  popupSettings.font = e.target.value;
-  api.storage.sync.set({ font: popupSettings.font });
-  applyPopupStyle();
-  sendToReader("set-basic-font", popupSettings.font);
-});
-
-// Font size change
-document.getElementById("font-size").addEventListener("change", (e) => {
-  popupSettings.fontSize = Number(e.target.value);
-  api.storage.sync.set({ fontSize: popupSettings.fontSize });
-  applyPopupStyle();
-  sendToReader("set-font-size", popupSettings.fontSize);
-});
-
-// Theme change
-document.getElementById("color-theme").addEventListener("change", (e) => {
-  popupSettings.theme = e.target.value;
-  api.storage.sync.set({ theme: popupSettings.theme });
-  applyPopupTheme(popupSettings.theme);
-  sendToReader("set-theme", popupSettings.theme);
-});
-
-// Bionic toggle
-document.getElementById("set-bionic").addEventListener("change", (e) => {
-  popupSettings.bionic = e.target.checked;
-  api.storage.sync.set({ bionic: popupSettings.bionic });
-  sendToReader("set-bionic", popupSettings.bionic);
-});
-
-// Temporary placeholder panel buttons
-document.getElementById("btn-three").addEventListener("click", () => showPanel("panel-three"));
-document.getElementById("btn-four").addEventListener("click", () => showPanel("panel-four"));
-document.getElementById("btn-five").addEventListener("click", () => showPanel("panel-five"));
