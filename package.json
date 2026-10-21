@@ -1,5 +1,8 @@
 {
   "devDependencies": {
     "esbuild": "^0.28.2"
+  },
+  "scripts": {
+    "build": "esbuild content/content.js --bundle --outfile=dist/content.js && esbuild popup/popup.js --bundle --outfile=dist/popup.js"
   }
 }

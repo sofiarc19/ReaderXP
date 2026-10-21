@@ -7,7 +7,13 @@ import { showSummaryPage } from "./summary.js";
 const SHORT_THRESHOLD = 300;
 const LONG_THRESHOLD = 700;
 
-state.paragraphCache = new Map();
+// XP multipliers for rereads
+const XP_MULTIPLIERS = {
+  FIRST_READ: 1,
+  SECOND_READ: 0.5,
+  REPEAT_READ: 0.25,
+};
+// state.paragraphCache = new Map();
 
 // Dynamic Sentence Count, Determines how many sentences to show on a page based on text length.
 export function getDynamicSentenceCount(sentences, startIndex) {
@@ -55,9 +61,14 @@ export function setActiveParagraph() {
   // If no sentences yet, extract from page
   if (state.allSentences.length === 0) {
     state.allSentences = extractSentences();
-    state.totalWordsRead =state.allSentences.join(" ").split(/\s+/).filter(Boolean).length;
   }
-
+  state.articleWordCount =
+      state.allSentences
+        .join(" ")
+        .split(/\s+/)
+        .filter(Boolean)
+        .length;
+        
   // Build pagination if missing
   if (state.pageIndexMap.length === 0) {
     state.pageIndexMap = buildPageIndexMap();
@@ -72,6 +83,12 @@ export function setActiveParagraph() {
 
   // Slice out the chunk of sentences for this page
   state.currentChunk = state.allSentences.slice(start, end);
+  state.currentPageWords =
+    state.currentChunk
+      .join(" ")
+      .split(/\s+/)
+      .filter(Boolean)
+      .length;
 
   // Render the chunk into the reader UI
   renderChunk(state.currentChunk);
@@ -83,110 +100,163 @@ export function setActiveParagraph() {
   state.activeElement = start;
 }
 
-// Level system based on Time‑based validation + Paragraph uniqueness + 
-// Paragraph difficulty scaling → award XP → level up
-// later add Store XP + levels in chrome.storage.sync
+// XP is awarded when leaving a page, not when entering a page. This ensures the user has
+// spent sufficient time reading the content before receiving XP.
 export function updateLeveling() {
+  return new Promise((resolve) => {
   const paragraphId = state.currentPage;
   const sentences = state.currentChunk;
-  const timeMs = Date.now() - state.timeStarted;
 
-  // 1. Prevent double XP
-  if (state.paragraphXpMap.has(paragraphId)) {
-    console.log("[LEVEL] No XP: paragraph already rewarded.");
+  if (!state.timeStarted) {
+    state.timeStarted = Date.now();
+    resolve();
     return;
   }
 
-  // 2. Determine expected reading time
+  const timeMs = Date.now() - state.timeStarted;
+
+  // Prevent double XP
+  if (state.paragraphXpMap.has(paragraphId)) {
+    console.log("[LEVEL] No XP: paragraph already rewarded.");
+    resolve();
+    return;
+  }
+
+  // Determine expected reading time
   const { expectedTime, difficulty } = getCachedStats(paragraphId, sentences);
   console.log("[LEVEL] Time spent:", timeMs, "Expected:", expectedTime);
 
   if (timeMs < expectedTime) {
     console.log("[LEVEL] No XP: user did not spend enough time.");
+    resolve();
     return;
   }
 
-  // 3. Calculate difficulty-based XP
-  const gainedXp = difficulty;
+  // Find previous reads of this article
+  chrome.storage.sync.get(["history"], (data) => {
+    const history = data.history || [];
 
-  state.xp += gainedXp;
-  state.sessionXp += gainedXp;
-  // 3.5: Save XP + level to chrome.storage.sync
-  chrome.storage.sync.set({
-    sessionXp: state.sessionXp,
-    xp: state.xp,
-    level: state.level
-  }, () => {
-    console.log("[LEVEL] Saved XP + Level:", state.xp, state.level);
+    const existingArticle = history.find(
+      (item) => item.url === window.location.href
+    );
+
+    const sessionCount =
+      existingArticle?.sessionCount || 0;
+
+    let xpMultiplier =
+      XP_MULTIPLIERS.FIRST_READ;
+
+    if (sessionCount >= 3) {
+      xpMultiplier =
+        XP_MULTIPLIERS.REPEAT_READ;
+    } else if (sessionCount >= 2) {
+      xpMultiplier =
+        XP_MULTIPLIERS.SECOND_READ;
+    }
+
+    // Calculate difficulty-based XP
+    const gainedXp = Math.max( 1, Math.round(difficulty * xpMultiplier));
+
+    state.xp += gainedXp;
+    state.sessionXp += gainedXp;
+
+    // Mark paragraph as rewarded 
+    state.paragraphXpMap.add(paragraphId);
+    
+    // Level up check 
+    const required = state.level * 100;
+
+    if (state.xp >= required) {
+      state.xp -= required;   // subtract required XP
+      state.level++;          // level up
+      state.coins = (state.coins || 0) + 1;
+      console.log("[LEVEL] Level up! New level:", state.level);
+      console.log("[COINS] Earned 1 coin. Balance:", state.coins);
+    }
+
+    const coinsGained = Math.max(0, (state.coins || 0) - (state.coinsAtStart || 0));
+
+    console.log(
+      "[LEVEL] XP Award:", gainedXp,
+      "Current XP:", state.xp, 
+      "/ Required:", required,
+      "Multiplier:", xpMultiplier,
+      "Session Count:", sessionCount);
+    // Save progression
+    chrome.storage.sync.set(
+      {
+        sessionXp: state.sessionXp,
+        xp: state.xp,
+        level: state.level,
+        coins: state.coins,
+        coinsGained,
+      },
+      () => {
+        console.log(
+          "[LEVEL] Saved XP + Level:",
+          state.xp,
+          state.level
+        );
+      // Reset timer for next paragraph
+      state.timeStarted = Date.now();
+      resolve();
+      }
+    );
   });
-
-  // 4. Mark paragraph as rewarded 
-  state.paragraphXpMap.add(paragraphId);
-
-  // 5. Level up check 
-  const required = state.level * 100;
-
-  if (state.xp >= required) {
-    state.xp -= required;   // subtract required XP
-    state.level++;          // level up
-    console.log("[LEVEL] Level up! New level:", state.level);
-  }
-
-  // 6. Reset timer for next paragraph
-  state.timeStarted = Date.now();
+});
 }
-
 //Navigation, Moves forward/backward through pages using the index map.
 export function nextPage() {
   console.log(
-    "[NEXT PAGE] Before:",
-    state.currentPage,
-    "/",
-    state.pageIndexMap.length - 1
+    "[SUMMARY] Final session XP:",
+    state.sessionXp
   );
+  // currentPageWords = words in the page currently visible, When moving pages:
+  // 1. Add current page words to running total
+  // 2. Award XP for current page
+  // 3. Move to next page
+  // 4. Render next page
+  // 5. Calculate the next page's word count
+  console.log("Page: ", state.currentPage + 2);
     
   if (state.currentPage < state.pageIndexMap.length - 1) {
     state.lastInteraction = Date.now();
-    
     state.paragraphSwitches++;
-    state.wordsReadSoFar += state.currentWords;
-    state.currentPage++;
-    chrome.storage.sync.set({
-      wordsReadSoFar: state.wordsReadSoFar,
-    });
-    state.percentComplete =
-    (
-      ((state.currentPage + 1) /
-        state.pageIndexMap.length)
-      * 100
-    );
-    
-    chrome.storage.sync.set({
-      readingActive: true,
-      sessionXp: state.sessionXp,
-      wordsReadSoFar: state.wordsReadSoFar,
-      percentComplete: state.percentComplete,
-    });
 
-      updateLeveling();
-      setActiveParagraph();
+    state.wordsReadSoFar += state.currentPageWords;
 
-      state.currentWords =
-      state.currentChunk
-        .join(" ")
-        .split(/\s+/)
-        .filter(Boolean)
-        .length;
+    updateLeveling().then(() => {
+      state.currentPage++;
 
-      chrome.storage.sync.set({
-        currentWords: state.currentWords,
-      });
-   } else {
-      console.log(
-        "[SUMMARY] Showing summary"
+      state.percentComplete = Math.round(
+        ((state.currentPage + 1) /
+          state.pageIndexMap.length) * 100
       );
 
-    showSummaryPage();
+      setActiveParagraph();
+
+      chrome.storage.sync.set({
+        readingActive: true,
+        sessionXp: state.sessionXp,
+        wordsReadSoFar: state.wordsReadSoFar,
+        currentPageWords: state.currentPageWords,
+        percentComplete: state.percentComplete,
+      });
+    });
+   } else {
+    state.wordsReadSoFar += state.currentPageWords;
+
+    updateLeveling().then(() => {
+      state.percentComplete = 100;
+      state.sessionStatus = "completed";
+
+      console.log(
+        "[SUMMARY] Final session XP:",
+        state.sessionXp
+      );
+
+      showSummaryPage();
+    });
   }
 }
 

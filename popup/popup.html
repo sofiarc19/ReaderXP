@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Focus Reader Popup</title>
+  <title>ReaderXP Popup</title>
   <link rel="stylesheet" href="../css/popup.css" />
 </head>
 
@@ -12,8 +12,8 @@
     <!-- Header -->
     <div class="popover-header">
       <div>
-        <span class="popover-kicker">Focus Reader</span>
-        <strong>Quick view</strong>
+        <span class="popover-kicker">ReaderXP</span>
+        <span class="popover-kicker">Quick view</strong>
       </div>
       <button aria-label="Close reading companion" class="popover-close" id="closePopover">×</button>
     </div>
@@ -32,11 +32,21 @@
         <!-- BEFORE READING STARTS -->
         <div id="reader-prestart">
             <div class="reader-ready">
-                <span>Ready to focus?</span>
-                <strong>PlaceHolder</strong>
-                <small>Info</small>
+                <span>Ready to focus? Start reading:</span>
+                <strong class="article-title"></strong>
+                <button class="start-reading-button" id="btn-play">
+                    <span>▶</span>
+                    Start reading
+                </button>
+                <!-- <small>Info</small> -->
             </div>
-
+            <div id="reader-previous-sesh" class="hidden">
+                <span>Want to pick up where you left off?</span>
+                <strong class="article-title"></strong>
+                 <small id="topicNextMeta">
+                    Session details will appear here
+                  </small>
+            </div>
             <div class="reader-settings">
                 <label>
                     <span>Font style</span>
@@ -77,10 +87,10 @@
                 </label>
             </div>
 
-            <button class="start-reading-button" id="btn-play">
+            <!-- <button class="start-reading-button" id="btn-play">
                 <span>▶</span>
                 Start reading
-            </button>
+            </button> -->
         </div>
 
         <!-- AFTER READING STARTS -->
@@ -97,13 +107,14 @@
 
             <div class="mini-stats">
                 <div><span>Time: </span><strong id="reader-time-popup"></strong></div>
-                <div><span>Words: </span><strong id="reader-words-popup"></strong></div>
-                <div><span>XP: </span><strong id="reader-xp-popup"> + </strong></div>
+                <div><span>Words read: </span><strong id="reader-words-popup"></strong></div>
+                <div><span>XP earned: </span><strong id="reader-xp-popup"></strong></div>
+                <div><span>Coins earned: </span><strong id="reader-coin-popup"></strong></div>
             </div>
 
             <div class="reader-session-actions">
                 <button id="reader-pause-popup">Pause reading</button>
-                <button id="reader-bookmark-popup">Pause & bookmark</button>
+                <!-- <button id="reader-bookmark-popup">Pause & bookmark</button> -->
                 <button id="reader-resume-popup" class="hidden">Resume</button>
                 <button id="reader-finish-popup">Finish session</button>
             </div>
@@ -166,14 +177,13 @@
         <button id="refreshHistory">
           Refresh
         </button>
-        <button id="addTopic">
+        <!-- <button id="addTopic">
           Add Topic
-        </button>
+        </button> -->
       </div>
 
       <!-- Sessions injected by popup.js -->
       <div class="topic-list" id="topicList">
-        <!-- renderTopicList() populates this -->
       </div>
 
       <div class="topic-current">
@@ -195,7 +205,7 @@
           <strong>Pet Suppply Shop</strong>
           <span>Pick up something for your buddy</span>
         </div>
-        <span class="coin-count"><i>$</i> ??</span>
+        <span class="coin-count"><i>$</i></span>
       </div>
 
       <div class="shop-categories">
@@ -215,6 +225,6 @@
       <p id="shopCategoryLabel">Showing food items</p>
     </div>
   </section>
-  <script src="popup.js"></script>
+  <script src="/dist/popup.js"></script>
 </body>
 </html>

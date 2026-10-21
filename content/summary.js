@@ -4,6 +4,10 @@ import { state } from "./state";
 
 // Summary page
 export function showSummaryPage() {
+  console.log(
+    "[SUMMARY] sessionXp at summary:",
+    state.sessionXp
+  );
   chrome.storage.sync.set({
     readingActive: false,
     sessionXp: state.sessionXp,
@@ -51,6 +55,10 @@ export function showSummaryPage() {
     ?.classList.add("hidden");
 
   document
+    .getElementById("reader-paused")
+    ?.classList.add("hidden");
+
+  document
     .getElementById("reader-summary")
     ?.classList.remove("hidden");
 
@@ -71,13 +79,16 @@ export function showSummaryPage() {
       </div>
 
       <div class="summary-stat">
-        <span>XP Gained</span>
-        <strong>${session.xpGained}</strong>
+        <span>Session Stats:</span>
+        <strong> Gained: +${session.xpGained} XP</strong>
+        <strong> / Total: ${session.totalXp} XP</strong>
+        <span> Current Level: ${state.level} </span>
+        <span class="coin-count">Coins Earned: <i>$</i> ${session.coinsGained}</span>
       </div>
 
       <div class="summary-stat">
         <span>Words Read</span>
-        <strong>${session.totalWords}</strong>
+        <strong>${session.wordsRead}</strong>
       </div>
 
       <div class="summary-stat">
@@ -98,10 +109,6 @@ export function showSummaryPage() {
         Save to Topic
       </button>
 
-      <button id="summary-finish-reading">
-        Finish Reading Session
-      </button>
-
       <button id="summary-pet-shop">
         Go To Pet Shop
       </button>
@@ -114,17 +121,6 @@ export function showSummaryPage() {
 
     <div id="summary-topic-picker" class="hidden"></div>
   `;
-
-  document
-  .getElementById("summary-finish-reading")
-  ?.addEventListener("click", () => {
-
-    toggleBlur();
-
-    document
-      .getElementById("reader-area-bar")
-      ?.remove();
-  });
 
  document
   .getElementById("summary-close-btn")

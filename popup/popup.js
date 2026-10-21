@@ -2,7 +2,7 @@
 const api = typeof browser !== "undefined" ? browser : chrome;
 window.browser = api;
 
-//import { loadTopics } from "./sessions.js";
+import { loadHistory } from "../content/sessions";
 
 // Utility selectors
 const $ = (sel) => document.querySelector(sel);
@@ -16,34 +16,49 @@ let popupSettings = {
   bionic: false,
 };
 
-function renderTopicList(topics) {
-  const topicList = document.getElementById("topicList");
+chrome.tabs.query(
+  { active: true, currentWindow: true },
+  (tabs) => {
+    const title =
+      tabs[0]?.title || "Unknown Article";
 
-  if (!topicList) return;
+    const articleTitle =
+      document.querySelector(".article-title");
 
-  topicList.innerHTML = "";
+    if (articleTitle) {
+      articleTitle.textContent = title;
+    }
+  }
+);
 
-  topics.forEach((topic, index) => {
-    const btn = document.createElement("button");
+// function renderTopicList(topics) {
+//   const topicList = document.getElementById("topicList");
 
-    btn.innerHTML = `
-      <span class="topic-dot topic-${index % 5}"></span>
+//   if (!topicList) return;
 
-      <span>
-        <strong>${topic.name}</strong>
-        <small>
-          ${topic.readings.length} reading${topic.readings.length !== 1 ? "s" : ""}
-        </small>
-      </span>
+//   topicList.innerHTML = "";
 
-      <b>${topic.totalXp}</b>
+//   topics.forEach((topic, index) => {
+//     const btn = document.createElement("button");
 
-      <span>›</span>
-    `;
+//     btn.innerHTML = `
+//       <span class="topic-dot topic-${index % 5}"></span>
 
-    topicList.appendChild(btn);
-  });
-}
+//       <span>
+//         <strong>${topic.name}</strong>
+//         <small>
+//           ${topic.readings.length} reading${topic.readings.length !== 1 ? "s" : ""}
+//         </small>
+//       </span>
+
+//       <b>${topic.totalXp}</b>
+
+//       <span>›</span>
+//     `;
+
+//     topicList.appendChild(btn);
+//   });
+// }
 
 // Get the currently active browser tab
 function getActiveTab() {
@@ -340,16 +355,17 @@ $("#reader-resume-popup")
   });
 });
 
-$("#reader-bookmark-popup")
-  ?.addEventListener("click", () => {
-    sendToReader("bookmark-reader");
-});
+// $("#reader-bookmark-popup")
+//   ?.addEventListener("click", () => {
+//     sendToReader("bookmark-reader");
+// });
 
 $("#reader-finish-popup")
   ?.addEventListener("click", () => {
     sendToReader("finish-reader");
 });
 
+//remove aa in reader ui 
 $("#reader-aa")?.addEventListener("click", () => {
   document
     .querySelector(".reader-settings")
@@ -360,16 +376,19 @@ function updateReaderPopupStats() {
   api.storage.sync.get(
     [
       "sessionXp",
+      "coinsGained",
+      "coins",
       "wordsReadSoFar",
       "percentComplete",
       "sessionStartedAt",
       "readingActive",
       "articleTitle",
       "isPaused",
+      "pausedAt",
       "totalPausedMs",
     ],
     (data) => {
-      
+
       if (!data.readingActive) return;
 
       const statusText = data.articleTitle
@@ -391,38 +410,30 @@ function updateReaderPopupStats() {
       }
 
       const xp = data.sessionXp || 0;
+      //const coins = data.coins || 0;
+      const coinsGained = data.coinsGained || 0;
       const words = data.wordsReadSoFar || 0;
 
       let timeText = "00:00";
-
       let elapsed = 0;
 
       if (data.sessionStartedAt) {
+        const now = data.isPaused ? (data.pausedAt || Date.now())  : Date.now();
         elapsed = Math.floor(
-          (
-            Date.now()
-            - data.sessionStartedAt
-            - (data.totalPausedMs || 0)
-          ) / 1000
+          (now - data.sessionStartedAt - (data.totalPausedMs || 0)) / 1000
         );
       }
 
-      if (data.sessionStartedAt) {
-        const elapsed =
-          Math.floor(
-            (Date.now() - data.sessionStartedAt) / 1000
-          );
+      const mins =
+        String(Math.floor(elapsed / 60))
+          .padStart(2, "0");
 
-        const mins =
-          String(Math.floor(elapsed / 60))
-            .padStart(2, "0");
-
-        const secs =
-          String(elapsed % 60)
-            .padStart(2, "0");
-
-        timeText = `${mins}:${secs}`;
-      }
+      const secs =
+        String(elapsed % 60)
+          .padStart(2, "0");
+          
+      // pause visual timer when paused 
+      timeText = `${mins}:${secs}`;
 
       document.getElementById(
         "reader-time-popup"
@@ -436,6 +447,14 @@ function updateReaderPopupStats() {
         "reader-xp-popup"
       ).textContent = `+${xp}`;
 
+      // document.getElementById(
+      //   "reader-coin-popup"
+      // ).textContent = `Coins earned: ${coins}`;
+      document.getElementById(
+        "reader-coin-popup"
+      ).textContent =
+        `${coinsGained}`;
+        //🪙
       const progress =
         data.percentComplete || 0;
 
@@ -445,6 +464,74 @@ function updateReaderPopupStats() {
     }
   );
 }
+
+// Reading Sessions Render
+function renderSessionList(history) {
+  const topicList =
+    document.getElementById("topicList");
+
+  if (!topicList) return;
+
+  topicList.innerHTML = "";
+
+  history.forEach((session, index) => {
+    const btn = document.createElement("button");
+    const count = session.sessionCount ?? 1;
+    const xp = session.totalXp ?? session.xpGained ?? 0;
+
+    btn.className = "topic-item";
+
+    btn.innerHTML = `
+      <span class="topic-dot topic-${index % 5}"></span>
+
+      <span>
+        <strong>${session.title}</strong>
+        <small>
+          ${count} session${count !== 1 ? "s" : ""}
+        </small>
+      </span>
+
+      <b>${xp} XP</b>
+
+      <span>›</span>
+    `;
+
+    btn.addEventListener("click", () => {
+      showSessionSummary(session);
+    });
+
+    topicList.appendChild(btn);
+  });
+}
+
+// Session Summary 
+function showSessionSummary(session) {
+  const title =
+    document.getElementById("topicNextTitle");
+
+  const meta =
+    document.getElementById("topicNextMeta");
+
+  if (!title || !meta) return;
+
+  title.textContent = session.title;
+
+  const xp = session.totalXp ?? session.xpGained ?? 0;
+
+  meta.textContent =
+    `${session.wordsRead || 0} words • ` +
+    `${xp} XP earned • ` +
+    `${session.sessionCount || 1} sessions`;
+}
+
+document
+  .getElementById("refreshHistory")
+  ?.addEventListener("click", () => {
+    loadHistory((history) => {
+      console.log("[HISTORY]", history);
+      renderSessionList(history);
+    });
+  });
 
 // Pet Panel
 $("#carePet")?.addEventListener("click",
@@ -469,6 +556,7 @@ $("#carePet")?.addEventListener("click",
 
 // Shop
 $$(".shop-categories button").forEach(
+  
   (btn) => {
     btn.addEventListener("click", () => {
       $$(".shop-categories button")
@@ -491,24 +579,16 @@ $("#closePopover")?.addEventListener("click",
   }
 );
 
-// temp data 
 document.addEventListener("DOMContentLoaded", () => {
+  // Reader popup stats
   updateReaderPopupStats();
 
   setInterval(() => {
     updateReaderPopupStats();
   }, 1000);
 
-  renderTopicList([
-    {
-      name: "Math",
-      readings: [{}, {}],
-      totalXp: 12,
-    },
-    {
-      name: "Personal",
-      readings: [{}, {}, {}],
-      totalXp: 7,
-    },
-  ]);
+  // Reading sessions
+  loadHistory((history) => {
+    renderSessionList(history);
+  });
 });

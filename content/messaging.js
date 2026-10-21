@@ -1,12 +1,10 @@
-import {
-  extractSentences,
-  extractSentencesFromText,
-} from "./sentenceProcessing.js";
+import { extractSentences, extractSentencesFromText } from "./sentenceProcessing.js";
 import { injectReaderArea, updateReaderStyle } from "./readerUI.js";
 import { toggleBlur, blurEnabled } from "./blur.js";
-import { state } from "./state.js";
 import { buildPageIndexMap, setActiveParagraph, nextPage } from "./pagination.js";
-import { showSummaryPage } from "./summary.js";
+//import { saveReadingSession, buildReadingSession } from "./sessions.js";
+import { showSummaryPage, showPausedPage } from "./summary.js";
+import { state } from "./state.js";
 
 export function setupMessaging() {
   // Normalize extension API between Chrome (chrome) and Firefox (browser)
@@ -22,50 +20,67 @@ export function setupMessaging() {
         return false;
 
       case "start-reader":
-        chrome.storage.sync.get(["xp", "level"], (data) => {
+        chrome.storage.sync.get(["xp", "level", "coins", "coinsGained"], (data) => {
           try {
+            // Load persistent player progression (these survive across sessions)
             if (data.xp !== undefined) state.xp = data.xp;
             if (data.level !== undefined) state.level = data.level;
-
+            if (data.coins !== undefined) state.coins = data.coins;
+            if (data.coinsGained !== undefined) state.coinsGained = data.coinsGained;
             console.log("[LEVEL] Loaded XP + Level:", state.xp, state.level);
 
-            console.log(
-              "[CONTENT] Starting reader, selectedText length:",
-              msg.selectedText ? msg.selectedText.length : 0,
-            );
-
+            // Start a NEW reading session
             state.sessionStartedAt = Date.now();
+            // Reset reader content
+            state.allSentences = [];
+            state.pageIndexMap = [];
+            state.currentChunk = null;
+            state.activeElement = null;
+            state.currentPage = 0;
+            // Current article information
+            state.articleTitle = document.title;
+            state.articleWordCount  = 0;
+            // Reading progress
+            state.wordsReadSoFar = 0;
+            state.currentPageWords = 0;
+            // XP tracking
+            state.coinsAtStart = state.coins;
+            state.levelAtStart = state.level;
+            state.sessionXp = 0;
+            // Progress tracking
+            state.percentComplete = 0;
+            state.paragraphSwitches = 0;
+            // Topic metadata
+            state.topicId = null;
+            state.sessionCategory = "Reading";
+            // User-created metadata
+            state.sessionNotes = [];
+            state.sessionTags = [];
+            // Reset XP awards for paragraphs
+            state.paragraphXpMap.clear();
+            // Session starts active
+            state.sessionStatus = "active";
+
+            // Pause-related tracking
             state.pausedAt = null;
             state.isPaused = false;
             state.totalPausedMs = 0;
+            // Running timer for this session
             state.totalSessionTime = 0;
 
-            state.articleTitle = document.title;
-            state.wordsReadSoFar = 0;
-            state.currentWords = 0;
-            
-            state.levelAtStart = state.level;
-            state.sessionXp = 0;
-
-            state.percentComplete = 0;
-            state.paragraphSwitches = 0;
-
-            state.sessionNotes = [];
-            state.sessionTags = [];
-
-            state.paragraphXpMap.clear();
-
             chrome.storage.sync.set({
+              // Persist live session data so popup.js can display statistics even when reopened
               readingActive: true,
               sessionStartedAt: state.sessionStartedAt,
               articleTitle: document.title,
 
+              coinsGained: 0,
               sessionXp: 0,
               wordsReadSoFar: 0,
-              currentWords: 0,
-
+              currentPageWords: 0,
               percentComplete: 0,
 
+              pausedAt: null,
               totalPausedMs: 0,
               isPaused: false,
             });
@@ -150,17 +165,21 @@ export function setupMessaging() {
         break;
 
       case "pause-reader":
+        console.log("[MESSAGING] pause-reader received");
+        state.lastInteraction = Date.now();
         state.isPaused = true;
         state.pausedAt = Date.now();
         showPausedPage();
         chrome.storage.sync.set({
           isPaused: true,
+          pausedAt: state.pausedAt,
         });
 
         sendResponse({ ok: true });
         break;
 
       case "resume-reader":
+        state.lastInteraction = Date.now();
         if (state.pausedAt) {
           const pausedDuration =
             Date.now() - state.pausedAt;
@@ -173,6 +192,7 @@ export function setupMessaging() {
 
         chrome.storage.sync.set({
           isPaused: false,
+          pausedAt: null,
           totalPausedMs: state.totalPausedMs,
           readingActive: true,
         });
@@ -182,7 +202,11 @@ export function setupMessaging() {
         break;
         
       case "finish-reader":
-        console.log("[READER] Finish clicked");
+        if (state.idleIntervalId) {
+          clearInterval(state.idleIntervalId);
+          state.idleIntervalId = null;
+        }
+        console.log("[MESSAGING] finish-reader received");
         state.sessionStatus = "completed";
         showSummaryPage();
         sendResponse({ ok: true });
@@ -191,15 +215,15 @@ export function setupMessaging() {
         });
         break;
 
-      case "bookmark-reader":
-        state.sessionStatus =
-          "bookmarked";
+      // case "bookmark-reader":
+      //   state.sessionStatus = "bookmarked";
 
-        saveReadingSession(
-          buildReadingSession(state)
-        );
+      //   saveReadingSession(
+      //     buildReadingSession(state)
+      //   );
 
-        break;
+      //   sendResponse({ ok: true });
+      //   break;
 
       case "set-basic-font":
         state.readerSettings.font = msg.value;

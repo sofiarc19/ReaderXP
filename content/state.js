@@ -5,9 +5,11 @@ export const state = {
   currentPage: 0,
   
   // Time tracking
+  // Reader timing (used for active reading detection)
   timeStarted: null,
   timeSpentMs: 0,
   lastInteraction: Date.now(),
+  idleIntervalId: null,
 
   // Session tracking
   sessionStartedAt: null,
@@ -17,15 +19,21 @@ export const state = {
   totalPausedMs: 0,
 
   sessionXp: 0,
+  coinsAtStart: 0,
   levelAtStart: 1,
 
-  totalWordsRead: 0,
-  wordsReadSoFar: 0,
-  currentWords: 0,
+  // Reading stats
+  articleTitle: "",
+  articleUrl: "",
+  articleWordCount: 0, // total words in article
+  currentPageWords: 0, // words in visible page
+  wordsReadSoFar: 0,  // accumulated words read
 
   percentComplete: 0,
 
-  sessionStatus: "completed",
+  sessionStatus: "active",
+
+  topicId: null,
   sessionCategory: "Reading",
 
   sessionTags: [],
@@ -40,6 +48,7 @@ export const state = {
   // Leveling system
   level: 1,
   xp: 0,
+  coins: 0,
 
   // The actual slice of sentences being displayed
   currentChunk: null,

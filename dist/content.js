@@ -248,9 +248,11 @@
     pageIndexMap: [],
     currentPage: 0,
     // Time tracking
+    // Reader timing (used for active reading detection)
     timeStarted: null,
     timeSpentMs: 0,
     lastInteraction: Date.now(),
+    idleIntervalId: null,
     // Session tracking
     sessionStartedAt: null,
     totalSessionTime: 0,
@@ -258,12 +260,20 @@
     isPaused: false,
     totalPausedMs: 0,
     sessionXp: 0,
+    coinsAtStart: 0,
     levelAtStart: 1,
-    totalWordsRead: 0,
+    // Reading stats
+    articleTitle: "",
+    articleUrl: "",
+    articleWordCount: 0,
+    // total words in article
+    currentPageWords: 0,
+    // words in visible page
     wordsReadSoFar: 0,
-    currentWords: 0,
+    // accumulated words read
     percentComplete: 0,
-    sessionStatus: "completed",
+    sessionStatus: "active",
+    topicId: null,
     sessionCategory: "Reading",
     sessionTags: [],
     sessionNotes: [],
@@ -274,6 +284,7 @@
     // Leveling system
     level: 1,
     xp: 0,
+    coins: 0,
     // The actual slice of sentences being displayed
     currentChunk: null,
     // Index of the first sentence in the current chunk
@@ -289,7 +300,8 @@
   };
 
   // content/sessions.js
-  function buildReadingSession2(state2) {
+  function buildReadingSession(state2) {
+    const coinsEarned = (state2.coins || 0) - (state2.coinsAtStart || 0);
     return {
       id: crypto.randomUUID(),
       title: document.title,
@@ -297,33 +309,71 @@
       startedAt: state2.sessionStartedAt,
       endedAt: Date.now(),
       totalTimeMs: state2.totalSessionTime,
-      articleWords: state2.totalWordsRead,
+      articleWords: state2.articleWordCount || 0,
       wordsRead: state2.wordsReadSoFar,
       percentComplete: state2.percentComplete,
-      status: state2.sessionStatus || "completed",
-      xpGained: state2.sessionXp,
+      xpGained: state2.sessionXp || 0,
+      totalXp: state2.xp,
+      coinsGained: coinsEarned,
       levelAtStart: state2.levelAtStart,
       levelAtEnd: state2.level,
       paragraphsRead: state2.paragraphSwitches,
-      topicId: null,
-      topicId: null,
+      status: state2.sessionStatus || "completed",
+      sessionCount: 1,
+      topicId: state2.topicId || null,
       topicName: state2.sessionCategory || null,
-      tags: [...state2.sessionTags],
-      notes: [...state2.sessionNotes]
+      tags: [...state2.sessionTags || []],
+      notes: [...state2.sessionNotes || []],
+      history: [],
+      createdAt: Date.now(),
+      lastReadAt: Date.now()
     };
   }
-  function saveReadingSession2(session) {
+  function saveReadingSession(session) {
     chrome.storage.sync.get(["history"], (data) => {
       const history = data.history || [];
       const MAX_HISTORY = 100;
-      history.unshift(session);
+      console.log("session: ", session, session.url);
+      const existingIndex = history.findIndex(
+        (item) => item.url === session.url
+      );
+      console.log("matches: ", existingIndex);
+      let currentSession;
+      if (existingIndex !== -1) {
+        currentSession = history.splice(existingIndex, 1)[0];
+        history.unshift(currentSession);
+        currentSession.wordsRead = (currentSession.wordsRead || 0) + (session.wordsRead || 0);
+        currentSession.totalTimeMs = (currentSession.totalTimeMs || 0) + (session.totalTimeMs || 0);
+        currentSession.totalXp = (currentSession.totalXp || 0) + (session.xpGained || 0);
+        currentSession.coinsGained = (currentSession.coinsGained || 0) + (session.coinsGained || 0);
+        currentSession.percentComplete = Math.max(
+          currentSession.percentComplete || 0,
+          session.percentComplete || 0
+        );
+        currentSession.sessionCount = (currentSession.sessionCount || 1) + 1;
+        currentSession.lastReadAt = session.endedAt;
+        currentSession.endedAt = session.endedAt;
+      } else {
+        currentSession = session;
+        history.unshift(currentSession);
+      }
+      currentSession.history ??= [];
+      currentSession.history.unshift({
+        startedAt: session.startedAt,
+        endedAt: session.endedAt,
+        xpGained: session.xpGained,
+        coinsGained: session.coinsGained,
+        wordsRead: session.wordsRead,
+        totalTimeMs: session.totalTimeMs,
+        percentComplete: session.percentComplete
+      });
       if (history.length > MAX_HISTORY) {
         history.length = MAX_HISTORY;
       }
       chrome.storage.sync.set({ history }, () => {
         console.log(
           "[SESSIONS] Saved reading session:",
-          session
+          currentSession
         );
       });
     });
@@ -365,6 +415,10 @@
 
   // content/summary.js
   function showSummaryPage() {
+    console.log(
+      "[SUMMARY] sessionXp at summary:",
+      state.sessionXp
+    );
     chrome.storage.sync.set({
       readingActive: false,
       sessionXp: state.sessionXp,
@@ -378,18 +432,19 @@
     state.isPaused = false;
     state.pausedAt = null;
     state.totalSessionTime = Date.now() - state.sessionStartedAt - state.totalPausedMs;
-    const session = buildReadingSession2(state);
+    const session = buildReadingSession(state);
     if (state.idleIntervalId) {
       clearInterval(state.idleIntervalId);
       state.idleIntervalId = null;
     }
-    saveReadingSession2(session);
+    saveReadingSession(session);
     const totalSeconds = Math.floor(session.totalTimeMs / 1e3);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor(totalSeconds % 3600 / 60);
     const seconds = totalSeconds % 60;
     const formattedTime = hours > 0 ? `${hours}h ${minutes}m ${seconds}s` : `${minutes}m ${seconds}s`;
     document.getElementById("reader-page")?.classList.add("hidden");
+    document.getElementById("reader-paused")?.classList.add("hidden");
     document.getElementById("reader-summary")?.classList.remove("hidden");
     document.getElementById("summary-content").innerHTML = `
   
@@ -406,13 +461,16 @@
       </div>
 
       <div class="summary-stat">
-        <span>XP Gained</span>
-        <strong>${session.xpGained}</strong>
+        <span>Session Stats:</span>
+        <strong> Gained: +${session.xpGained} XP</strong>
+        <strong> / Total: ${session.totalXp} XP</strong>
+        <span> Current Level: ${state.level} </span>
+        <span class="coin-count">Coins Earned: <i>$</i> ${session.coinsGained}</span>
       </div>
 
       <div class="summary-stat">
         <span>Words Read</span>
-        <strong>${session.totalWords}</strong>
+        <strong>${session.wordsRead}</strong>
       </div>
 
       <div class="summary-stat">
@@ -433,10 +491,6 @@
         Save to Topic
       </button>
 
-      <button id="summary-finish-reading">
-        Finish Reading Session
-      </button>
-
       <button id="summary-pet-shop">
         Go To Pet Shop
       </button>
@@ -449,10 +503,6 @@
 
     <div id="summary-topic-picker" class="hidden"></div>
   `;
-    document.getElementById("summary-finish-reading")?.addEventListener("click", () => {
-      toggleBlur();
-      document.getElementById("reader-area-bar")?.remove();
-    });
     document.getElementById("summary-close-btn")?.addEventListener("click", () => {
       chrome.storage.sync.set({
         readingActive: false
@@ -468,11 +518,48 @@
       );
     });
   }
+  function showPausedPage() {
+    document.getElementById("reader-page")?.classList.add("hidden");
+    document.getElementById("reader-summary")?.classList.add("hidden");
+    document.getElementById("reader-paused")?.classList.remove("hidden");
+    const resumeBtn = document.getElementById(
+      "paused-resume-btn"
+    );
+    if (resumeBtn) {
+      resumeBtn.onclick = () => {
+        if (state.pausedAt) {
+          const pausedDuration = Date.now() - state.pausedAt;
+          state.totalPausedMs += pausedDuration;
+        }
+        state.pausedAt = null;
+        state.isPaused = false;
+        chrome.storage.sync.set({
+          isPaused: false,
+          totalPausedMs: state.totalPausedMs,
+          readingActive: true
+        });
+        resumeReadingPage();
+      };
+    }
+    document.getElementById("paused-finish-btn")?.addEventListener("click", () => {
+      showSummaryPage();
+      state.isPaused = false;
+      state.pausedAt = null;
+    });
+  }
+  function resumeReadingPage() {
+    document.getElementById("reader-paused")?.classList.add("hidden");
+    document.getElementById("reader-page")?.classList.remove("hidden");
+  }
 
   // content/pagination.js
   var SHORT_THRESHOLD = 300;
   var LONG_THRESHOLD = 700;
-  state.paragraphCache = /* @__PURE__ */ new Map();
+  var XP_MULTIPLIERS = {
+    FIRST_READ: 1,
+    SECOND_READ: 0.5,
+    REPEAT_READ: 0.25
+  };
   function getDynamicSentenceCount(sentences, startIndex) {
     const BASE = 9;
     const MIN = 1;
@@ -504,8 +591,8 @@
   function setActiveParagraph() {
     if (state.allSentences.length === 0) {
       state.allSentences = extractSentences();
-      state.totalWordsRead = state.allSentences.join(" ").split(/\s+/).filter(Boolean).length;
     }
+    state.articleWordCount = state.allSentences.join(" ").split(/\s+/).filter(Boolean).length;
     if (state.pageIndexMap.length === 0) {
       state.pageIndexMap = buildPageIndexMap();
     }
@@ -513,76 +600,126 @@
     const count = getDynamicSentenceCount(state.allSentences, start);
     const end = start + count;
     state.currentChunk = state.allSentences.slice(start, end);
+    state.currentPageWords = state.currentChunk.join(" ").split(/\s+/).filter(Boolean).length;
     renderChunk(state.currentChunk);
     updateReaderProgress();
     state.activeElement = start;
   }
   function updateLeveling() {
-    const paragraphId = state.currentPage;
-    const sentences = state.currentChunk;
-    const timeMs = Date.now() - state.timeStarted;
-    if (state.paragraphXpMap.has(paragraphId)) {
-      console.log("[LEVEL] No XP: paragraph already rewarded.");
-      return;
-    }
-    const { expectedTime, difficulty } = getCachedStats(paragraphId, sentences);
-    console.log("[LEVEL] Time spent:", timeMs, "Expected:", expectedTime);
-    if (timeMs < expectedTime) {
-      console.log("[LEVEL] No XP: user did not spend enough time.");
-      return;
-    }
-    const gainedXp = difficulty;
-    state.xp += gainedXp;
-    state.sessionXp += gainedXp;
-    chrome.storage.sync.set({
-      sessionXp: state.sessionXp,
-      xp: state.xp,
-      level: state.level
-    }, () => {
-      console.log("[LEVEL] Saved XP + Level:", state.xp, state.level);
+    return new Promise((resolve) => {
+      const paragraphId = state.currentPage;
+      const sentences = state.currentChunk;
+      if (!state.timeStarted) {
+        state.timeStarted = Date.now();
+        resolve();
+        return;
+      }
+      const timeMs = Date.now() - state.timeStarted;
+      if (state.paragraphXpMap.has(paragraphId)) {
+        console.log("[LEVEL] No XP: paragraph already rewarded.");
+        resolve();
+        return;
+      }
+      const { expectedTime, difficulty } = getCachedStats(paragraphId, sentences);
+      console.log("[LEVEL] Time spent:", timeMs, "Expected:", expectedTime);
+      if (timeMs < expectedTime) {
+        console.log("[LEVEL] No XP: user did not spend enough time.");
+        resolve();
+        return;
+      }
+      chrome.storage.sync.get(["history"], (data) => {
+        const history = data.history || [];
+        const existingArticle = history.find(
+          (item) => item.url === window.location.href
+        );
+        const sessionCount = existingArticle?.sessionCount || 0;
+        let xpMultiplier = XP_MULTIPLIERS.FIRST_READ;
+        if (sessionCount >= 3) {
+          xpMultiplier = XP_MULTIPLIERS.REPEAT_READ;
+        } else if (sessionCount >= 2) {
+          xpMultiplier = XP_MULTIPLIERS.SECOND_READ;
+        }
+        const gainedXp = Math.max(1, Math.round(difficulty * xpMultiplier));
+        state.xp += gainedXp;
+        state.sessionXp += gainedXp;
+        state.paragraphXpMap.add(paragraphId);
+        const required = state.level * 100;
+        if (state.xp >= required) {
+          state.xp -= required;
+          state.level++;
+          state.coins = (state.coins || 0) + 1;
+          console.log("[LEVEL] Level up! New level:", state.level);
+          console.log("[COINS] Earned 1 coin. Balance:", state.coins);
+        }
+        const coinsGained = Math.max(0, (state.coins || 0) - (state.coinsAtStart || 0));
+        console.log(
+          "[LEVEL] XP Award:",
+          gainedXp,
+          "Current XP:",
+          state.xp,
+          "/ Required:",
+          required,
+          "Multiplier:",
+          xpMultiplier,
+          "Session Count:",
+          sessionCount
+        );
+        chrome.storage.sync.set(
+          {
+            sessionXp: state.sessionXp,
+            xp: state.xp,
+            level: state.level,
+            coins: state.coins,
+            coinsGained
+          },
+          () => {
+            console.log(
+              "[LEVEL] Saved XP + Level:",
+              state.xp,
+              state.level
+            );
+            state.timeStarted = Date.now();
+            resolve();
+          }
+        );
+      });
     });
-    state.paragraphXpMap.add(paragraphId);
-    const required = state.level * 100;
-    if (state.xp >= required) {
-      state.xp -= required;
-      state.level++;
-      console.log("[LEVEL] Level up! New level:", state.level);
-    }
-    state.timeStarted = Date.now();
   }
   function nextPage() {
     console.log(
-      "[NEXT PAGE] Before:",
-      state.currentPage,
-      "/",
-      state.pageIndexMap.length - 1
+      "[SUMMARY] Final session XP:",
+      state.sessionXp
     );
+    console.log("Page: ", state.currentPage + 2);
     if (state.currentPage < state.pageIndexMap.length - 1) {
       state.lastInteraction = Date.now();
       state.paragraphSwitches++;
-      state.wordsReadSoFar += state.currentWords;
-      state.currentPage++;
-      chrome.storage.sync.set({
-        wordsReadSoFar: state.wordsReadSoFar
-      });
-      state.percentComplete = (state.currentPage + 1) / state.pageIndexMap.length * 100;
-      chrome.storage.sync.set({
-        readingActive: true,
-        sessionXp: state.sessionXp,
-        wordsReadSoFar: state.wordsReadSoFar,
-        percentComplete: state.percentComplete
-      });
-      updateLeveling();
-      setActiveParagraph();
-      state.currentWords = state.currentChunk.join(" ").split(/\s+/).filter(Boolean).length;
-      chrome.storage.sync.set({
-        currentWords: state.currentWords
+      state.wordsReadSoFar += state.currentPageWords;
+      updateLeveling().then(() => {
+        state.currentPage++;
+        state.percentComplete = Math.round(
+          (state.currentPage + 1) / state.pageIndexMap.length * 100
+        );
+        setActiveParagraph();
+        chrome.storage.sync.set({
+          readingActive: true,
+          sessionXp: state.sessionXp,
+          wordsReadSoFar: state.wordsReadSoFar,
+          currentPageWords: state.currentPageWords,
+          percentComplete: state.percentComplete
+        });
       });
     } else {
-      console.log(
-        "[SUMMARY] Showing summary"
-      );
-      showSummaryPage();
+      state.wordsReadSoFar += state.currentPageWords;
+      updateLeveling().then(() => {
+        state.percentComplete = 100;
+        state.sessionStatus = "completed";
+        console.log(
+          "[SUMMARY] Final session XP:",
+          state.sessionXp
+        );
+        showSummaryPage();
+      });
     }
   }
   function prevPage() {
@@ -670,16 +807,13 @@
     <div id="reader-page">
       <div id="reader-area-header">
         <span id="reader-status">Reading now</span>
-        <button id="reader-aa">Aa</button>
   
         <div class="mini-progress">
           <div id="reader-progress"></div>
         </div>
         <div class="reader-session-actions">
           <button id="reader-pause">Pause</button>
-          <button id="reader-bookmark">Pause & bookmark</button>
-          <button id="reader-resume" class="hidden">Resume</button>
-          <button id="reader-finish">Finish</button>
+          <button id="reader-finish">Finish Session</button>
           
           <button id="btn-prev">Previous</button>
           <button id="btn-next">Next</button>
@@ -709,6 +843,51 @@
     document.documentElement.appendChild(bar);
     document.getElementById("btn-next").addEventListener("click", nextPage);
     document.getElementById("btn-prev").addEventListener("click", prevPage);
+    const pausedResumeBtn = document.getElementById("paused-resume-btn");
+    const pausedFinishBtn = document.getElementById("paused-finish-btn");
+    if (pausedResumeBtn) {
+      pausedResumeBtn.addEventListener("click", () => {
+        chrome.runtime.sendMessage({
+          action: "resume-reader"
+        });
+      });
+    }
+    if (pausedFinishBtn) {
+      pausedFinishBtn.addEventListener("click", () => {
+        chrome.runtime.sendMessage({
+          action: "finish-reader"
+        });
+      });
+    }
+    const pauseBtn = document.getElementById("reader-pause");
+    const finishBtn = document.getElementById("reader-finish");
+    if (pauseBtn) {
+      pauseBtn.addEventListener("click", () => {
+        console.log("[UI] Pause clicked");
+        state.lastInteraction = Date.now();
+        state.isPaused = true;
+        state.pausedAt = Date.now();
+        chrome.storage.sync.set({
+          isPaused: true,
+          pausedAt: state.pausedAt
+        });
+        showPausedPage();
+      });
+    }
+    if (finishBtn) {
+      finishBtn.addEventListener("click", () => {
+        console.log("[UI] Finish clicked");
+        if (state.idleIntervalId) {
+          clearInterval(state.idleIntervalId);
+          state.idleIntervalId = null;
+        }
+        state.sessionStatus = "completed";
+        chrome.storage.sync.set({
+          readingActive: false
+        });
+        showSummaryPage();
+      });
+    }
   }
   function updateReaderStyle() {
     const bar = document.getElementById("reader-area-bar");
@@ -732,38 +911,49 @@
           sendResponse({ ok: true });
           return false;
         case "start-reader":
-          chrome.storage.sync.get(["xp", "level"], (data) => {
+          chrome.storage.sync.get(["xp", "level", "coins", "coinsGained"], (data) => {
             try {
               if (data.xp !== void 0) state.xp = data.xp;
               if (data.level !== void 0) state.level = data.level;
+              if (data.coins !== void 0) state.coins = data.coins;
+              if (data.coinsGained !== void 0) state.coinsGained = data.coinsGained;
               console.log("[LEVEL] Loaded XP + Level:", state.xp, state.level);
-              console.log(
-                "[CONTENT] Starting reader, selectedText length:",
-                msg.selectedText ? msg.selectedText.length : 0
-              );
               state.sessionStartedAt = Date.now();
-              state.pausedAt = null;
-              state.isPaused = false;
-              state.totalPausedMs = 0;
-              state.totalSessionTime = 0;
+              state.allSentences = [];
+              state.pageIndexMap = [];
+              state.currentChunk = null;
+              state.activeElement = null;
+              state.currentPage = 0;
               state.articleTitle = document.title;
+              state.articleWordCount = 0;
               state.wordsReadSoFar = 0;
-              state.currentWords = 0;
+              state.currentPageWords = 0;
+              state.coinsAtStart = state.coins;
               state.levelAtStart = state.level;
               state.sessionXp = 0;
               state.percentComplete = 0;
               state.paragraphSwitches = 0;
+              state.topicId = null;
+              state.sessionCategory = "Reading";
               state.sessionNotes = [];
               state.sessionTags = [];
               state.paragraphXpMap.clear();
+              state.sessionStatus = "active";
+              state.pausedAt = null;
+              state.isPaused = false;
+              state.totalPausedMs = 0;
+              state.totalSessionTime = 0;
               chrome.storage.sync.set({
+                // Persist live session data so popup.js can display statistics even when reopened
                 readingActive: true,
                 sessionStartedAt: state.sessionStartedAt,
                 articleTitle: document.title,
+                coinsGained: 0,
                 sessionXp: 0,
                 wordsReadSoFar: 0,
-                currentWords: 0,
+                currentPageWords: 0,
                 percentComplete: 0,
+                pausedAt: null,
                 totalPausedMs: 0,
                 isPaused: false
               });
@@ -823,15 +1013,19 @@
           sendResponse({ ok: true });
           break;
         case "pause-reader":
+          console.log("[MESSAGING] pause-reader received");
+          state.lastInteraction = Date.now();
           state.isPaused = true;
           state.pausedAt = Date.now();
           showPausedPage();
           chrome.storage.sync.set({
-            isPaused: true
+            isPaused: true,
+            pausedAt: state.pausedAt
           });
           sendResponse({ ok: true });
           break;
         case "resume-reader":
+          state.lastInteraction = Date.now();
           if (state.pausedAt) {
             const pausedDuration = Date.now() - state.pausedAt;
             state.totalPausedMs += pausedDuration;
@@ -840,13 +1034,18 @@
           state.isPaused = false;
           chrome.storage.sync.set({
             isPaused: false,
+            pausedAt: null,
             totalPausedMs: state.totalPausedMs,
             readingActive: true
           });
           sendResponse({ ok: true });
           break;
         case "finish-reader":
-          console.log("[READER] Finish clicked");
+          if (state.idleIntervalId) {
+            clearInterval(state.idleIntervalId);
+            state.idleIntervalId = null;
+          }
+          console.log("[MESSAGING] finish-reader received");
           state.sessionStatus = "completed";
           showSummaryPage();
           sendResponse({ ok: true });
@@ -854,12 +1053,13 @@
             readingActive: false
           });
           break;
-        case "bookmark-reader":
-          state.sessionStatus = "bookmarked";
-          saveReadingSession(
-            buildReadingSession(state)
-          );
-          break;
+        // case "bookmark-reader":
+        //   state.sessionStatus = "bookmarked";
+        //   saveReadingSession(
+        //     buildReadingSession(state)
+        //   );
+        //   sendResponse({ ok: true });
+        //   break;
         case "set-basic-font":
           state.readerSettings.font = msg.value;
           updateReaderStyle();

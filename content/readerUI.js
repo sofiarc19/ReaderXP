@@ -1,5 +1,6 @@
 import { state } from "./state.js";
 import { nextPage, prevPage } from "./pagination.js";
+import { showPausedPage, showSummaryPage } from "./summary.js";
 
 // Choose the correct word‑transform function (normal or bionic)
 export function getActiveTransformFunction() {
@@ -25,8 +26,8 @@ export function renderChunk(chunk) {
 
 // Re-render the current chunk (used when settings change)
 export function rerenderReader() {
-  if (!currentChunk) return;
-  renderChunk(currentChunk);
+  if (!state.currentChunk) return;
+  renderChunk(state.currentChunk);
 }
 
 // Normal mode: return word unchanged
@@ -81,16 +82,13 @@ export function injectReaderArea() {
     <div id="reader-page">
       <div id="reader-area-header">
         <span id="reader-status">Reading now</span>
-        <button id="reader-aa">Aa</button>
   
         <div class="mini-progress">
           <div id="reader-progress"></div>
         </div>
         <div class="reader-session-actions">
           <button id="reader-pause">Pause</button>
-          <button id="reader-bookmark">Pause & bookmark</button>
-          <button id="reader-resume" class="hidden">Resume</button>
-          <button id="reader-finish">Finish</button>
+          <button id="reader-finish">Finish Session</button>
           
           <button id="btn-prev">Previous</button>
           <button id="btn-next">Next</button>
@@ -124,6 +122,76 @@ export function injectReaderArea() {
   // Navigation buttons
   document.getElementById("btn-next").addEventListener("click", nextPage);
   document.getElementById("btn-prev").addEventListener("click", prevPage);
+
+  const pausedResumeBtn =
+  document.getElementById("paused-resume-btn");
+
+  const pausedFinishBtn =
+    document.getElementById("paused-finish-btn");
+
+  if (pausedResumeBtn) {
+    pausedResumeBtn.addEventListener("click", () => {
+      chrome.runtime.sendMessage({
+        action: "resume-reader",
+      });
+    });
+  }
+
+  if (pausedFinishBtn) {
+    pausedFinishBtn.addEventListener("click", () => {
+      chrome.runtime.sendMessage({
+        action: "finish-reader",
+      });
+    });
+  }
+
+  const pauseBtn =
+  document.getElementById("reader-pause");
+
+  const finishBtn =
+    document.getElementById("reader-finish");
+
+  if (pauseBtn) {
+    pauseBtn.addEventListener("click", () => {
+      console.log("[UI] Pause clicked");
+
+      // document.getElementById("reader-status").textContent =
+      //   "Reading paused";
+
+      // resumeBtn?.classList.remove("hidden");
+      // pauseBtn?.classList.add("hidden");
+
+      state.lastInteraction = Date.now();
+      state.isPaused = true;
+      state.pausedAt = Date.now();
+
+      chrome.storage.sync.set({
+        isPaused: true,
+        pausedAt: state.pausedAt,
+      });
+
+      showPausedPage();
+    });
+  }
+
+  if (finishBtn) {
+    finishBtn.addEventListener("click", () => {
+      console.log("[UI] Finish clicked");
+
+      if (state.idleIntervalId) {
+        clearInterval(state.idleIntervalId);
+        state.idleIntervalId = null;
+      }
+
+      state.sessionStatus = "completed";
+
+      chrome.storage.sync.set({
+        readingActive: false,
+      });
+
+      showSummaryPage();
+    });
+  }
 }
 
 // Apply font + size + theme settings to the reader UI
