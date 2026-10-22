@@ -357,23 +357,23 @@ body {
 }
 
 /* TOPICS / READING SESSIONS */
-.topics-view { padding: 15px 16px 16px; }
+.sessions-view { padding: 15px 16px 16px; }
 
-.topics-heading {
+.sessions-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
-.topics-heading > div { display: grid; gap: 2px; }
-.topics-heading strong {
+.sessions-heading > div { display: grid; gap: 2px; }
+.sessions-heading strong {
   color: var(--text);
   font-size: 12px;
 }
-.topics-heading span {
+.sessions-heading span {
   color: var(--text-muted);
   font-size: 8px;
 }
-.topics-heading > button {
+.sessions-heading > button {
   height: 29px;
   display: flex;
   align-items: center;
@@ -388,12 +388,12 @@ body {
   font-weight: 700;
 }
 
-.topic-list {
+.sessions-list {
   display: grid;
   gap: 4px;
   margin-top: 12px;
 }
-.topic-list > button {
+.sessions-list > button {
   min-height: 43px;
   display: grid;
   grid-template-columns: 8px 1fr auto 8px;
@@ -406,20 +406,20 @@ body {
   border-radius: 8px;
   text-align: left;
 }
-.topic-list > button:hover,
-.topic-list > button.active {
+.sessions-list > button:hover,
+.sessions-list > button.active {
   background: var(--surface-hover);
   border-color: var(--border);
 }
-.topic-list strong {
+.sessions-list strong {
   color: var(--text);
   font-size: 10px;
 }
-.topic-list small {
+.sessions-list small {
   color: var(--text-muted);
   font-size: 8px;
 }
-.topic-list b {
+.sessions-list b {
   min-width: 19px;
   height: 19px;
   display: grid;
@@ -429,18 +429,18 @@ body {
   border-radius: 6px;
   font-size: 8px;
 }
-.topic-dot {
+.sessions-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
 }
-.topic-0 { background: #6482e3; }
-.topic-1 { background: #9b73d2; }
-.topic-2 { background: #58ac83; }
-.topic-3 { background: #e79558; }
-.topic-4 { background: #4ba7ac; }
+.sessions-0 { background: #6482e3; }
+.sessions-1 { background: #9b73d2; }
+.sessions-2 { background: #58ac83; }
+.sessions-3 { background: #e79558; }
+.sessions-4 { background: #4ba7ac; }
 
-.topic-current {
+.sessions-current {
   display: grid;
   gap: 2px;
   margin-top: 10px;
@@ -449,18 +449,18 @@ body {
   border: 1px solid var(--border);
   border-radius: 8px;
 }
-.topic-current > span {
+.sessions-current > span {
   color: var(--accent);
   font-size: 7px;
   font-weight: 700;
   letter-spacing: .3px;
   text-transform: uppercase;
 }
-.topic-current strong {
+.sessions-current strong {
   color: var(--text);
   font-size: 10px;
 }
-.topic-current small {
+.sessions-current small {
   color: var(--text-muted);
   font-size: 8px;
 }

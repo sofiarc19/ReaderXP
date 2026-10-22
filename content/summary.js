@@ -82,8 +82,8 @@ export function showSummaryPage() {
         <span>Session Stats:</span>
         <strong> Gained: +${session.xpGained} XP</strong>
         <strong> / Total: ${session.totalXp} XP</strong>
-        <span> Current Level: ${state.level} </span>
-        <span class="coin-count">Coins Earned: <i>$</i> ${session.coinsGained}</span>
+        <strong> / Current Level: ${state.level} </strong>
+        <strong class="coin-count"> / Coins Earned: <i>$</i> ${session.coinsGained}</strong>
       </div>
 
       <div class="summary-stat">
@@ -104,10 +104,6 @@ export function showSummaryPage() {
     </div>
 
     <div class="summary-actions">
-
-      <button id="summary-save-topic">
-        Save to Topic
-      </button>
 
       <button id="summary-pet-shop">
         Go To Pet Shop

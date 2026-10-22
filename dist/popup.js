@@ -248,7 +248,8 @@
     $("#reader-resume-popup")?.classList.remove("hidden");
     sendToReader("pause-reader");
     chrome.storage.sync.set({
-      isPaused: true
+      isPaused: true,
+      pausedAt: Date.now()
     });
   });
   $("#reader-resume-popup")?.addEventListener("click", () => {
@@ -327,16 +328,16 @@
     );
   }
   function renderSessionList(history) {
-    const topicList = document.getElementById("topicList");
-    if (!topicList) return;
-    topicList.innerHTML = "";
+    const sessionsList = document.getElementById("sessionsList");
+    if (!sessionsList) return;
+    sessionsList.innerHTML = "";
     history.forEach((session, index) => {
       const btn = document.createElement("button");
       const count = session.sessionCount ?? 1;
       const xp = session.totalXp ?? session.xpGained ?? 0;
-      btn.className = "topic-item";
+      btn.className = "sessions-item";
       btn.innerHTML = `
-      <span class="topic-dot topic-${index % 5}"></span>
+      <span class="sessions-dot sessions-${index % 5}"></span>
 
       <span>
         <strong>${session.title}</strong>
@@ -352,12 +353,12 @@
       btn.addEventListener("click", () => {
         showSessionSummary(session);
       });
-      topicList.appendChild(btn);
+      sessionsList.appendChild(btn);
     });
   }
   function showSessionSummary(session) {
-    const title = document.getElementById("topicNextTitle");
-    const meta = document.getElementById("topicNextMeta");
+    const title = document.getElementById("sessionsNextTitle");
+    const meta = document.getElementById("sessionsNextMeta");
     if (!title || !meta) return;
     title.textContent = session.title;
     const xp = session.totalXp ?? session.xpGained ?? 0;
@@ -368,6 +369,64 @@
       console.log("[HISTORY]", history);
       renderSessionList(history);
     });
+  });
+  function checkForPreviousSession() {
+    chrome.tabs.query(
+      { active: true, currentWindow: true },
+      (tabs) => {
+        const currentUrl = tabs[0]?.url;
+        if (!currentUrl) return;
+        chrome.storage.sync.get(
+          ["readingActive"],
+          (data) => {
+            if (data.readingActive) {
+              return;
+            }
+            loadHistory((history) => {
+              const session = history.filter((item) => item.url === currentUrl).sort((a, b) => b.lastReadAt - a.lastReadAt)[0];
+              if (!session) {
+                return;
+              }
+              if (session.status === "completed" || (session.percentComplete || 0) >= 100) {
+                return;
+              }
+              window.resumeSession = session;
+              console.log("[RESUME SESSION]", session);
+              document.getElementById("reader-prestart")?.classList.add("hidden");
+              document.getElementById("reader-previous-sesh")?.classList.remove("hidden");
+              const titleEl = document.getElementById(
+                "resume-title"
+              );
+              const metaEl = document.getElementById(
+                "resume-meta"
+              );
+              if (titleEl) {
+                titleEl.textContent = session.title;
+              }
+              if (metaEl) {
+                metaEl.textContent = `${session.wordsRead || 0} words \u2022 ${session.totalXp || session.xpGained || 0} XP \u2022 ${session.percentComplete || 0}% complete \u2022 Page ${(session.currentPage ?? 0) + 1}`;
+              }
+            });
+          }
+        );
+      }
+    );
+  }
+  document.getElementById("btn-continue-reading")?.addEventListener("click", async () => {
+    const tab = await getActiveTab();
+    if (!tab?.id) return;
+    const ok = await ensureContentScript(tab.id);
+    if (!ok) return;
+    const resumePage = window.resumeSession?.currentPage ?? 0;
+    const response = await sendMessageToTab(tab.id, {
+      action: "start-reader",
+      resumePage,
+      settings: { ...popupSettings }
+    });
+    if (response?.ok) {
+      document.getElementById("reader-previous-sesh")?.classList.add("hidden");
+      document.getElementById("reader-active-popup")?.classList.remove("hidden");
+    }
   });
   $("#carePet")?.addEventListener(
     "click",
@@ -405,6 +464,7 @@
   );
   document.addEventListener("DOMContentLoaded", () => {
     updateReaderPopupStats();
+    checkForPreviousSession();
     setInterval(() => {
       updateReaderPopupStats();
     }, 1e3);

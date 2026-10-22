@@ -141,6 +141,10 @@ export function setupMessaging() {
             state.currentPage = 0;
 
             // Apply styling + highlight first paragraph
+            if (msg.resumePage !== undefined) {
+              state.currentPage = msg.resumePage;
+            }
+
             updateReaderStyle();
             setActiveParagraph();
             sendResponse({

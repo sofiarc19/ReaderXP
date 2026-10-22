@@ -311,6 +311,7 @@
       totalTimeMs: state2.totalSessionTime,
       articleWords: state2.articleWordCount || 0,
       wordsRead: state2.wordsReadSoFar,
+      currentPage: state2.currentPage,
       percentComplete: state2.percentComplete,
       xpGained: state2.sessionXp || 0,
       totalXp: state2.xp,
@@ -350,6 +351,7 @@
           currentSession.percentComplete || 0,
           session.percentComplete || 0
         );
+        currentSession.currentPage = session.currentPage;
         currentSession.sessionCount = (currentSession.sessionCount || 1) + 1;
         currentSession.lastReadAt = session.endedAt;
         currentSession.endedAt = session.endedAt;
@@ -365,7 +367,8 @@
         coinsGained: session.coinsGained,
         wordsRead: session.wordsRead,
         totalTimeMs: session.totalTimeMs,
-        percentComplete: session.percentComplete
+        percentComplete: session.percentComplete,
+        currentPage: session.currentPage
       });
       if (history.length > MAX_HISTORY) {
         history.length = MAX_HISTORY;
@@ -464,8 +467,8 @@
         <span>Session Stats:</span>
         <strong> Gained: +${session.xpGained} XP</strong>
         <strong> / Total: ${session.totalXp} XP</strong>
-        <span> Current Level: ${state.level} </span>
-        <span class="coin-count">Coins Earned: <i>$</i> ${session.coinsGained}</span>
+        <strong> / Current Level: ${state.level} </strong>
+        <strong class="coin-count"> / Coins Earned: <i>$</i> ${session.coinsGained}</strong>
       </div>
 
       <div class="summary-stat">
@@ -486,10 +489,6 @@
     </div>
 
     <div class="summary-actions">
-
-      <button id="summary-save-topic">
-        Save to Topic
-      </button>
 
       <button id="summary-pet-shop">
         Go To Pet Shop
@@ -993,6 +992,9 @@
               }
               state.pageIndexMap = buildPageIndexMap();
               state.currentPage = 0;
+              if (msg.resumePage !== void 0) {
+                state.currentPage = msg.resumePage;
+              }
               updateReaderStyle();
               setActiveParagraph();
               sendResponse({

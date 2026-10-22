@@ -40,13 +40,6 @@
                 </button>
                 <!-- <small>Info</small> -->
             </div>
-            <div id="reader-previous-sesh" class="hidden">
-                <span>Want to pick up where you left off?</span>
-                <strong class="article-title"></strong>
-                 <small id="topicNextMeta">
-                    Session details will appear here
-                  </small>
-            </div>
             <div class="reader-settings">
                 <label>
                     <span>Font style</span>
@@ -86,40 +79,48 @@
                     <button id="set-bionic" class="toggle"><i></i></button>
                 </label>
             </div>
-
-            <!-- <button class="start-reading-button" id="btn-play">
+        </div>
+        <!-- Continue previous session -->
+        <div id="reader-previous-sesh" class="hidden">
+          <div class="reader-ready">
+            <span>Want to pick up where you left off?</span>
+            <strong id="resume-title"></strong>
+            <small id="resume-meta">
+              Session details will appear here
+            </small>
+            <button class="start-reading-button" id="btn-continue-reading">
                 <span>▶</span>
-                Start reading
-            </button> -->
+                Continue reading
+            </button>
+          </div>
         </div>
+          <!-- AFTER READING STARTS -->
+          <div id="reader-active-popup" class="hidden">
 
-        <!-- AFTER READING STARTS -->
-        <div id="reader-active-popup" class="hidden">
+              <div id="reader-session-head">
+              <span id="reader-status">Reading now</span>
+              <button id="reader-aa">Aa</button>
+              </div>
 
-            <div id="reader-session-head">
-            <span id="reader-status">Reading now</span>
-            <button id="reader-aa">Aa</button>
-            </div>
+              <div class="mini-progress">
+                  <span id="reader-progress-popup"></span>
+              </div>
 
-            <div class="mini-progress">
-                <span id="reader-progress-popup"></span>
-            </div>
+              <div class="mini-stats">
+                  <div><span>Current Session Stats:</span></div>
+                  <div><span>Time: </span><strong id="reader-time-popup"></strong></div>
+                  <div><span>Words read: </span><strong id="reader-words-popup"></strong></div>
+                  <div><span>XP earned: </span><strong id="reader-xp-popup"></strong></div>
+                  <div><span>Coins earned: </span><strong id="reader-coin-popup"></strong></div>
+              </div>
 
-            <div class="mini-stats">
-                <div><span>Time: </span><strong id="reader-time-popup"></strong></div>
-                <div><span>Words read: </span><strong id="reader-words-popup"></strong></div>
-                <div><span>XP earned: </span><strong id="reader-xp-popup"></strong></div>
-                <div><span>Coins earned: </span><strong id="reader-coin-popup"></strong></div>
-            </div>
-
-            <div class="reader-session-actions">
-                <button id="reader-pause-popup">Pause reading</button>
-                <!-- <button id="reader-bookmark-popup">Pause & bookmark</button> -->
-                <button id="reader-resume-popup" class="hidden">Resume</button>
-                <button id="reader-finish-popup">Finish session</button>
-            </div>
-        </div>
-
+              <div class="reader-session-actions">
+                  <button id="reader-pause-popup">Pause reading</button>
+                  <!-- <button id="reader-bookmark-popup">Pause & bookmark</button> -->
+                  <button id="reader-resume-popup" class="hidden">Resume</button>
+                  <button id="reader-finish-popup">Finish session</button>
+              </div>
+          </div>
     </div>
 
     <!-- PET PANEL -->
@@ -166,9 +167,9 @@
     </div>
 
     <!-- READING SESSIONS PANEL -->
-    <div class="topics-view tab-panel hidden" data-panel="sessions">
+    <div class="sessions-view tab-panel hidden" data-panel="sessions">
 
-      <div class="topics-heading">
+      <div class="sessions-heading">
         <div>
           <strong>Reading Sessions</strong>
           <span>Your saved reading history</span>
@@ -183,15 +184,15 @@
       </div>
 
       <!-- Sessions injected by popup.js -->
-      <div class="topic-list" id="topicList">
+      <div class="sessions-list" id="sessionsList">
       </div>
 
-      <div class="topic-current">
+      <div class="sessions-current">
         <span>Session Summary</span>
-        <strong id="topicNextTitle">
+        <strong id="sessionsNextTitle">
           Select a session
         </strong>
-        <small id="topicNextMeta">
+        <small id="sessionsNextMeta">
           Session details will appear here
         </small>
       </div>

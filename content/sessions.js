@@ -17,6 +17,7 @@ export function buildReadingSession(state) {
     articleWords: state.articleWordCount || 0,
     wordsRead: state.wordsReadSoFar,
 
+    currentPage: state.currentPage,
     percentComplete: state.percentComplete,
 
     xpGained: state.sessionXp || 0,
@@ -76,6 +77,7 @@ export function saveReadingSession(session) {
         currentSession.percentComplete = Math.max(
           currentSession.percentComplete || 0,
           session.percentComplete || 0);
+        currentSession.currentPage = session.currentPage;
         currentSession.sessionCount =
           (currentSession.sessionCount || 1) + 1;
         currentSession.lastReadAt = session.endedAt;
@@ -94,6 +96,7 @@ export function saveReadingSession(session) {
         wordsRead: session.wordsRead,
         totalTimeMs: session.totalTimeMs,
         percentComplete: session.percentComplete,
+        currentPage: session.currentPage,
       })
 
     if (history.length > MAX_HISTORY) {
@@ -116,18 +119,18 @@ export function loadHistory(callback) {
   });
 }
 
-// Load topics (used by popup or summary page)
-export function loadTopics(callback) {
-  chrome.storage.sync.get(["readingTopics"], (data) => {
-    callback(data.readingTopics || []);
+// Load sessions (used by popup or summary page)
+export function loadsessions(callback) {
+  chrome.storage.sync.get(["readingsessions"], (data) => {
+    callback(data.readingsessions || []);
   });
 }
 
 export function createTopic(title) {
-  chrome.storage.sync.get(["readingTopics"], (data) => {
-    const topics = data.readingTopics || [];
+  chrome.storage.sync.get(["readingsessions"], (data) => {
+    const sessions = data.readingsessions || [];
 
-    topics.push({
+    sessions.push({
       id: crypto.randomUUID(),
       name: title,
 
@@ -142,16 +145,16 @@ export function createTopic(title) {
     });
 
     chrome.storage.sync.set({
-      readingTopics: topics,
+      readingsessions: sessions,
     });
   });
 }
 
 export function addReadingToTopic(topicId, reading) {
-  chrome.storage.sync.get(["readingTopics"], (data) => {
-    const topics = data.readingTopics || [];
+  chrome.storage.sync.get(["readingsessions"], (data) => {
+    const sessions = data.readingsessions || [];
 
-    const topic = topics.find((t) => t.id === topicId);
+    const topic = sessions.find((t) => t.id === topicId);
     if (!topic) return;
 
     topic.readings ??= [];
@@ -194,7 +197,7 @@ export function addReadingToTopic(topicId, reading) {
     topic.lastReadAt = Date.now();
 
     chrome.storage.sync.set({
-      readingTopics: topics,
+      readingsessions: sessions,
     });
   });
 }

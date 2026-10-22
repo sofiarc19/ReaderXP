@@ -31,35 +31,6 @@ chrome.tabs.query(
   }
 );
 
-// function renderTopicList(topics) {
-//   const topicList = document.getElementById("topicList");
-
-//   if (!topicList) return;
-
-//   topicList.innerHTML = "";
-
-//   topics.forEach((topic, index) => {
-//     const btn = document.createElement("button");
-
-//     btn.innerHTML = `
-//       <span class="topic-dot topic-${index % 5}"></span>
-
-//       <span>
-//         <strong>${topic.name}</strong>
-//         <small>
-//           ${topic.readings.length} reading${topic.readings.length !== 1 ? "s" : ""}
-//         </small>
-//       </span>
-
-//       <b>${topic.totalXp}</b>
-
-//       <span>›</span>
-//     `;
-
-//     topicList.appendChild(btn);
-//   });
-// }
-
 // Get the currently active browser tab
 function getActiveTab() {
   return new Promise((resolve) => {
@@ -341,6 +312,7 @@ $("#reader-pause-popup")
     sendToReader("pause-reader");
     chrome.storage.sync.set({
       isPaused: true,
+      pausedAt: Date.now(),
     });
 });
 
@@ -467,22 +439,22 @@ function updateReaderPopupStats() {
 
 // Reading Sessions Render
 function renderSessionList(history) {
-  const topicList =
-    document.getElementById("topicList");
+  const sessionsList =
+    document.getElementById("sessionsList");
 
-  if (!topicList) return;
+  if (!sessionsList) return;
 
-  topicList.innerHTML = "";
+  sessionsList.innerHTML = "";
 
   history.forEach((session, index) => {
     const btn = document.createElement("button");
     const count = session.sessionCount ?? 1;
     const xp = session.totalXp ?? session.xpGained ?? 0;
 
-    btn.className = "topic-item";
+    btn.className = "sessions-item";
 
     btn.innerHTML = `
-      <span class="topic-dot topic-${index % 5}"></span>
+      <span class="sessions-dot sessions-${index % 5}"></span>
 
       <span>
         <strong>${session.title}</strong>
@@ -500,17 +472,17 @@ function renderSessionList(history) {
       showSessionSummary(session);
     });
 
-    topicList.appendChild(btn);
+    sessionsList.appendChild(btn);
   });
 }
 
 // Session Summary 
 function showSessionSummary(session) {
   const title =
-    document.getElementById("topicNextTitle");
+    document.getElementById("sessionsNextTitle");
 
   const meta =
-    document.getElementById("topicNextMeta");
+    document.getElementById("sessionsNextMeta");
 
   if (!title || !meta) return;
 
@@ -525,12 +497,119 @@ function showSessionSummary(session) {
 }
 
 document
-  .getElementById("refreshHistory")
-  ?.addEventListener("click", () => {
+  .getElementById("refreshHistory")?.addEventListener("click", () => {
     loadHistory((history) => {
       console.log("[HISTORY]", history);
       renderSessionList(history);
     });
+  });
+
+// Check to see if there is a previous uncompleted session
+function checkForPreviousSession() {
+  chrome.tabs.query(
+    { active: true, currentWindow: true },
+    (tabs) => {
+      const currentUrl = tabs[0]?.url;
+
+      if (!currentUrl) return;
+
+      chrome.storage.sync.get(
+        ["readingActive"],
+        (data) => {
+
+          // Don't show "Continue Reading"
+          // if a session is already active
+          if (data.readingActive) {
+            return;
+          }
+
+        loadHistory((history) => {
+          const session = history
+            .filter((item) => item.url === currentUrl)
+            .sort((a, b) => b.lastReadAt - a.lastReadAt)[0];
+
+          if (!session) {
+            return;
+          }
+          
+          // Ignore completed sessions
+          if (session.status === "completed" ||
+            (session.percentComplete || 0) >= 100
+          ) {
+            return;
+          }
+          
+          window.resumeSession = session;
+          console.log("[RESUME SESSION]", session);
+
+          document
+            .getElementById("reader-prestart")
+            ?.classList.add("hidden");
+
+          document
+            .getElementById("reader-previous-sesh")
+            ?.classList.remove("hidden");
+
+          const titleEl =
+                document.getElementById(
+                  "resume-title"
+                );
+
+              const metaEl =
+                document.getElementById(
+                  "resume-meta"
+                );
+
+              if (titleEl) {
+                titleEl.textContent =
+                  session.title;
+              }
+
+              if (metaEl) {
+                metaEl.textContent =
+                  `${session.wordsRead || 0} words • ` +
+                  `${session.totalXp || session.xpGained || 0} XP • ` +
+                  `${session.percentComplete || 0}% complete • ` +
+                  `Page ${(session.currentPage ?? 0) + 1}`;
+              }
+          });
+        }
+      );
+    }
+  );
+}
+
+// Continue reading btn if there is a previous session
+document
+  .getElementById("btn-continue-reading")
+  ?.addEventListener("click", async () => {
+
+    const tab = await getActiveTab();
+
+    if (!tab?.id) return;
+
+    const ok = await ensureContentScript(tab.id);
+
+    if (!ok) return;
+
+    const resumePage = window.resumeSession?.currentPage ?? 0;
+
+    const response =
+      await sendMessageToTab(tab.id, {
+        action: "start-reader",
+        resumePage,
+        settings: { ...popupSettings },
+      });
+
+    if (response?.ok) {
+      document
+        .getElementById("reader-previous-sesh")
+        ?.classList.add("hidden");
+
+      document
+        .getElementById("reader-active-popup")
+        ?.classList.remove("hidden");
+    }
   });
 
 // Pet Panel
@@ -582,7 +661,8 @@ $("#closePopover")?.addEventListener("click",
 document.addEventListener("DOMContentLoaded", () => {
   // Reader popup stats
   updateReaderPopupStats();
-
+  // Show previous session if any
+  checkForPreviousSession();
   setInterval(() => {
     updateReaderPopupStats();
   }, 1000);
