@@ -424,13 +424,10 @@
     );
     chrome.storage.sync.set({
       readingActive: false,
+      isPaused: false,
       sessionXp: state.sessionXp,
       wordsReadSoFar: state.wordsReadSoFar,
       percentComplete: state.percentComplete
-    });
-    chrome.storage.sync.set({
-      readingActive: false,
-      isPaused: false
     });
     state.isPaused = false;
     state.pausedAt = null;
@@ -541,9 +538,15 @@
       };
     }
     document.getElementById("paused-finish-btn")?.addEventListener("click", () => {
-      showSummaryPage();
-      state.isPaused = false;
-      state.pausedAt = null;
+      updateLeveling().then(() => {
+        state.sessionStatus = state.percentComplete >= 100 ? "completed" : "in_progress";
+        chrome.storage.sync.set({
+          readingActive: false
+        });
+        showSummaryPage();
+        state.isPaused = false;
+        state.pausedAt = null;
+      });
     });
   }
   function resumeReadingPage() {
@@ -628,27 +631,31 @@
       }
       chrome.storage.sync.get(["history"], (data) => {
         const history = data.history || [];
-        const existingArticle = history.find(
-          (item) => item.url === window.location.href
-        );
+        const existingArticle = history.filter((item) => item.url === window.location.href).sort((a, b) => (b.lastReadAt || 0) - (a.lastReadAt || 0))[0];
         const sessionCount = existingArticle?.sessionCount || 0;
+        const completedArticle = existingArticle && (existingArticle.status === "completed" || existingArticle.percentComplete >= 100);
         let xpMultiplier = XP_MULTIPLIERS.FIRST_READ;
-        if (sessionCount >= 3) {
-          xpMultiplier = XP_MULTIPLIERS.REPEAT_READ;
-        } else if (sessionCount >= 2) {
-          xpMultiplier = XP_MULTIPLIERS.SECOND_READ;
+        if (completedArticle) {
+          const reads = existingArticle.sessionCount || 1;
+          if (reads >= 3) {
+            xpMultiplier = XP_MULTIPLIERS.REPEAT_READ;
+          } else if (reads >= 2) {
+            xpMultiplier = XP_MULTIPLIERS.SECOND_READ;
+          }
         }
         const gainedXp = Math.max(1, Math.round(difficulty * xpMultiplier));
         state.xp += gainedXp;
         state.sessionXp += gainedXp;
         state.paragraphXpMap.add(paragraphId);
         const required = state.level * 100;
-        if (state.xp >= required) {
-          state.xp -= required;
+        while (state.xp >= state.level * 100) {
+          state.xp -= state.level * 100;
           state.level++;
           state.coins = (state.coins || 0) + 1;
-          console.log("[LEVEL] Level up! New level:", state.level);
-          console.log("[COINS] Earned 1 coin. Balance:", state.coins);
+          console.log(
+            "[LEVEL] Level up! New level:",
+            state.level
+          );
         }
         const coinsGained = Math.max(0, (state.coins || 0) - (state.coinsAtStart || 0));
         console.log(
@@ -712,7 +719,7 @@
       state.wordsReadSoFar += state.currentPageWords;
       updateLeveling().then(() => {
         state.percentComplete = 100;
-        state.sessionStatus = "completed";
+        state.sessionStatus = state.percentComplete >= 100 ? "completed" : "in_progress";
         console.log(
           "[SUMMARY] Final session XP:",
           state.sessionXp
@@ -880,11 +887,13 @@
           clearInterval(state.idleIntervalId);
           state.idleIntervalId = null;
         }
-        state.sessionStatus = "completed";
-        chrome.storage.sync.set({
-          readingActive: false
+        updateLeveling().then(() => {
+          state.sessionStatus = state.percentComplete >= 100 ? "completed" : "in_progress";
+          chrome.storage.sync.set({
+            readingActive: false
+          });
+          showSummaryPage();
         });
-        showSummaryPage();
       });
     }
   }
@@ -1048,20 +1057,15 @@
             state.idleIntervalId = null;
           }
           console.log("[MESSAGING] finish-reader received");
-          state.sessionStatus = "completed";
-          showSummaryPage();
-          sendResponse({ ok: true });
-          chrome.storage.sync.set({
-            readingActive: false
+          updateLeveling().then(() => {
+            state.sessionStatus = state.percentComplete >= 100 ? "completed" : "in_progress";
+            chrome.storage.sync.set({
+              readingActive: false
+            });
+            showSummaryPage();
+            sendResponse({ ok: true });
           });
-          break;
-        // case "bookmark-reader":
-        //   state.sessionStatus = "bookmarked";
-        //   saveReadingSession(
-        //     buildReadingSession(state)
-        //   );
-        //   sendResponse({ ok: true });
-        //   break;
+          return true;
         case "set-basic-font":
           state.readerSettings.font = msg.value;
           updateReaderStyle();

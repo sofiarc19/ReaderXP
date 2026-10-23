@@ -306,31 +306,41 @@ $("#btn-play")?.addEventListener("click",
 // Active Reader Popup
 $("#reader-pause-popup")
   ?.addEventListener("click", () => {
-    $("#reader-status").textContent = "Reading paused";
+    $("#reader-status").textContent =
+      "Reading paused";
+
+    $("#reader-pause-popup")
+      ?.classList.add("hidden");
+
     $("#reader-resume-popup")
-    ?.classList.remove("hidden");
+      ?.classList.remove("hidden");
+
     sendToReader("pause-reader");
+
     chrome.storage.sync.set({
       isPaused: true,
       pausedAt: Date.now(),
     });
 });
 
+
 $("#reader-resume-popup")
   ?.addEventListener("click", () => {
-    $("#reader-status").textContent = "Reading now";
+    $("#reader-status").textContent =
+      "Reading now";
+
     $("#reader-resume-popup")
       ?.classList.add("hidden");
-  sendToReader("resume-reader");
-  chrome.storage.sync.set({
-    isPaused: false,
-  });
-});
 
-// $("#reader-bookmark-popup")
-//   ?.addEventListener("click", () => {
-//     sendToReader("bookmark-reader");
-// });
+    $("#reader-pause-popup")
+      ?.classList.remove("hidden");
+
+    sendToReader("resume-reader");
+
+    chrome.storage.sync.set({
+      isPaused: false,
+    });
+});
 
 $("#reader-finish-popup")
   ?.addEventListener("click", () => {
@@ -379,6 +389,21 @@ function updateReaderPopupStats() {
       }
       else if (status) {
         status.textContent = statusText;
+      }
+
+      // Keep pause/resume buttons in sync
+      if (data.isPaused) {
+        $("#reader-pause-popup")
+          ?.classList.add("hidden");
+
+        $("#reader-resume-popup")
+          ?.classList.remove("hidden");
+      } else {
+        $("#reader-pause-popup")
+          ?.classList.remove("hidden");
+
+        $("#reader-resume-popup")
+          ?.classList.add("hidden");
       }
 
       const xp = data.sessionXp || 0;
@@ -488,11 +513,11 @@ function showSessionSummary(session) {
 
   title.textContent = session.title;
 
-  const xp = session.totalXp ?? session.xpGained ?? 0;
+  //const xp = session.totalXp ?? session.xpGained ?? 0;
 
   meta.textContent =
     `${session.wordsRead || 0} words • ` +
-    `${xp} XP earned • ` +
+    `${session.xpGained} XP earned • ` +
     `${session.sessionCount || 1} sessions`;
 }
 

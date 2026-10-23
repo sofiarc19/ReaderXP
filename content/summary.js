@@ -1,4 +1,5 @@
 import { buildReadingSession, saveReadingSession } from "./sessions";
+import { updateLeveling } from "./pagination";
 import { toggleBlur } from "./blur";
 import { state } from "./state";
 
@@ -10,13 +11,10 @@ export function showSummaryPage() {
   );
   chrome.storage.sync.set({
     readingActive: false,
+    isPaused: false,
     sessionXp: state.sessionXp,
     wordsReadSoFar: state.wordsReadSoFar,
     percentComplete: state.percentComplete,
-  });
-  chrome.storage.sync.set({
-    readingActive: false,
-    isPaused: false,
   });
   state.isPaused = false;
   state.pausedAt = null;
@@ -194,11 +192,22 @@ export function showPausedPage() {
   document
     .getElementById("paused-finish-btn")
     ?.addEventListener("click", () => {
+      updateLeveling().then(() => {
+
+      state.sessionStatus =
+        state.percentComplete >= 100
+          ? "completed"
+          : "in_progress";
+
+      chrome.storage.sync.set({
+        readingActive: false,
+      });
 
       showSummaryPage();
+
       state.isPaused = false;
       state.pausedAt = null;
-
+    });
   });
 }
 

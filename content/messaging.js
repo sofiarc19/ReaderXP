@@ -1,7 +1,7 @@
 import { extractSentences, extractSentencesFromText } from "./sentenceProcessing.js";
 import { injectReaderArea, updateReaderStyle } from "./readerUI.js";
 import { toggleBlur, blurEnabled } from "./blur.js";
-import { buildPageIndexMap, setActiveParagraph, nextPage } from "./pagination.js";
+import { buildPageIndexMap, setActiveParagraph, nextPage, updateLeveling } from "./pagination.js";
 //import { saveReadingSession, buildReadingSession } from "./sessions.js";
 import { showSummaryPage, showPausedPage } from "./summary.js";
 import { state } from "./state.js";
@@ -210,24 +210,26 @@ export function setupMessaging() {
           clearInterval(state.idleIntervalId);
           state.idleIntervalId = null;
         }
+
         console.log("[MESSAGING] finish-reader received");
-        state.sessionStatus = "completed";
-        showSummaryPage();
-        sendResponse({ ok: true });
-        chrome.storage.sync.set({
-          readingActive: false,
+
+        updateLeveling().then(() => {
+
+          state.sessionStatus =
+            state.percentComplete >= 100
+              ? "completed"
+              : "in_progress";
+
+          chrome.storage.sync.set({
+            readingActive: false,
+          });
+
+          showSummaryPage();
+
+          sendResponse({ ok: true });
         });
-        break;
 
-      // case "bookmark-reader":
-      //   state.sessionStatus = "bookmarked";
-
-      //   saveReadingSession(
-      //     buildReadingSession(state)
-      //   );
-
-      //   sendResponse({ ok: true });
-      //   break;
+        return true;
 
       case "set-basic-font":
         state.readerSettings.font = msg.value;

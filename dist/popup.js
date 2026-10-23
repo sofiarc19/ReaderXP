@@ -245,6 +245,7 @@
   );
   $("#reader-pause-popup")?.addEventListener("click", () => {
     $("#reader-status").textContent = "Reading paused";
+    $("#reader-pause-popup")?.classList.add("hidden");
     $("#reader-resume-popup")?.classList.remove("hidden");
     sendToReader("pause-reader");
     chrome.storage.sync.set({
@@ -255,6 +256,7 @@
   $("#reader-resume-popup")?.addEventListener("click", () => {
     $("#reader-status").textContent = "Reading now";
     $("#reader-resume-popup")?.classList.add("hidden");
+    $("#reader-pause-popup")?.classList.remove("hidden");
     sendToReader("resume-reader");
     chrome.storage.sync.set({
       isPaused: false
@@ -293,6 +295,13 @@
           ).textContent = "Reading paused";
         } else if (status) {
           status.textContent = statusText;
+        }
+        if (data.isPaused) {
+          $("#reader-pause-popup")?.classList.add("hidden");
+          $("#reader-resume-popup")?.classList.remove("hidden");
+        } else {
+          $("#reader-pause-popup")?.classList.remove("hidden");
+          $("#reader-resume-popup")?.classList.add("hidden");
         }
         const xp = data.sessionXp || 0;
         const coinsGained = data.coinsGained || 0;
@@ -361,8 +370,7 @@
     const meta = document.getElementById("sessionsNextMeta");
     if (!title || !meta) return;
     title.textContent = session.title;
-    const xp = session.totalXp ?? session.xpGained ?? 0;
-    meta.textContent = `${session.wordsRead || 0} words \u2022 ${xp} XP earned \u2022 ${session.sessionCount || 1} sessions`;
+    meta.textContent = `${session.wordsRead || 0} words \u2022 ${session.xpGained} XP earned \u2022 ${session.sessionCount || 1} sessions`;
   }
   document.getElementById("refreshHistory")?.addEventListener("click", () => {
     loadHistory((history) => {

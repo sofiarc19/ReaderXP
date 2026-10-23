@@ -136,22 +136,32 @@ export function updateLeveling() {
   chrome.storage.sync.get(["history"], (data) => {
     const history = data.history || [];
 
-    const existingArticle = history.find(
-      (item) => item.url === window.location.href
-    );
+    const existingArticle = history
+      .filter((item) => item.url === window.location.href)
+      .sort((a, b) => (b.lastReadAt || 0) - (a.lastReadAt || 0))[0];
 
     const sessionCount =
       existingArticle?.sessionCount || 0;
 
-    let xpMultiplier =
-      XP_MULTIPLIERS.FIRST_READ;
+    const completedArticle =
+      existingArticle && ( existingArticle.status === "completed" ||
+        existingArticle.percentComplete >= 100
+      );
 
-    if (sessionCount >= 3) {
-      xpMultiplier =
-        XP_MULTIPLIERS.REPEAT_READ;
-    } else if (sessionCount >= 2) {
-      xpMultiplier =
-        XP_MULTIPLIERS.SECOND_READ;
+    let xpMultiplier = XP_MULTIPLIERS.FIRST_READ;
+
+    if (completedArticle) {
+      const reads =
+        existingArticle.sessionCount || 1;
+
+      if (reads >= 3) {
+        xpMultiplier =
+          XP_MULTIPLIERS.REPEAT_READ;
+      }
+      else if (reads >= 2) {
+        xpMultiplier =
+          XP_MULTIPLIERS.SECOND_READ;
+      }
     }
 
     // Calculate difficulty-based XP
@@ -166,12 +176,15 @@ export function updateLeveling() {
     // Level up check 
     const required = state.level * 100;
 
-    if (state.xp >= required) {
-      state.xp -= required;   // subtract required XP
-      state.level++;          // level up
+    while (state.xp >= state.level * 100) {
+      state.xp -= state.level * 100;
+      state.level++;
       state.coins = (state.coins || 0) + 1;
-      console.log("[LEVEL] Level up! New level:", state.level);
-      console.log("[COINS] Earned 1 coin. Balance:", state.coins);
+
+      console.log(
+        "[LEVEL] Level up! New level:",
+        state.level
+      );
     }
 
     const coinsGained = Math.max(0, (state.coins || 0) - (state.coinsAtStart || 0));
@@ -228,10 +241,11 @@ export function nextPage() {
     updateLeveling().then(() => {
       state.currentPage++;
 
-      state.percentComplete = Math.round(
-        ((state.currentPage + 1) /
-          state.pageIndexMap.length) * 100
-      );
+      state.percentComplete =
+        Math.round(
+          ((state.currentPage + 1) /
+            state.pageIndexMap.length) * 100
+        );
 
       setActiveParagraph();
 
@@ -248,7 +262,10 @@ export function nextPage() {
 
     updateLeveling().then(() => {
       state.percentComplete = 100;
-      state.sessionStatus = "completed";
+      state.sessionStatus =
+        state.percentComplete >= 100
+          ? "completed"
+          : "in_progress";
 
       console.log(
         "[SUMMARY] Final session XP:",

@@ -1,5 +1,5 @@
 import { state } from "./state.js";
-import { nextPage, prevPage } from "./pagination.js";
+import { nextPage, prevPage, updateLeveling } from "./pagination.js";
 import { showPausedPage, showSummaryPage } from "./summary.js";
 
 // Choose the correct word‑transform function (normal or bionic)
@@ -183,13 +183,18 @@ export function injectReaderArea() {
         state.idleIntervalId = null;
       }
 
-      state.sessionStatus = "completed";
+      updateLeveling().then(() => {
+        state.sessionStatus =
+          state.percentComplete >= 100
+            ? "completed"
+            : "in_progress";
 
-      chrome.storage.sync.set({
-        readingActive: false,
+        chrome.storage.sync.set({
+          readingActive: false,
+        });
+
+        showSummaryPage();
       });
-
-      showSummaryPage();
     });
   }
 }
