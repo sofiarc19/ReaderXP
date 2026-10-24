@@ -2,8 +2,8 @@ import { extractSentences, extractSentencesFromText } from "./sentenceProcessing
 import { injectReaderArea, updateReaderStyle } from "./readerUI.js";
 import { toggleBlur, blurEnabled } from "./blur.js";
 import { buildPageIndexMap, setActiveParagraph, nextPage, updateLeveling } from "./pagination.js";
-//import { saveReadingSession, buildReadingSession } from "./sessions.js";
-import { showSummaryPage, showPausedPage } from "./summary.js";
+import { saveSessionCheckpoint } from "./sessions.js";
+import { showSummaryPage, showPausedPage} from "./summary.js";
 import { state } from "./state.js";
 
 export function setupMessaging() {
@@ -111,6 +111,15 @@ export function setupMessaging() {
               }
             }, 5000);
 
+            // Auto-save reading progress every 30 seconds
+            if (state.autosaveId) {
+              clearInterval(state.autosaveId);
+            }
+
+            state.autosaveId = setInterval(() => {
+              saveSessionCheckpoint();
+            }, 30000);
+
             // Apply any reader settings sent from popup
             if (msg.settings) {
               Object.assign(state.readerSettings, msg.settings);
@@ -200,7 +209,7 @@ export function setupMessaging() {
           totalPausedMs: state.totalPausedMs,
           readingActive: true,
         });
-
+        //resumeReadingPage();
         sendResponse({ ok: true });
 
         break;
@@ -210,7 +219,10 @@ export function setupMessaging() {
           clearInterval(state.idleIntervalId);
           state.idleIntervalId = null;
         }
-
+        if (state.autosaveId) {
+          clearInterval(state.autosaveId);
+          state.autosaveId = null;
+        }
         console.log("[MESSAGING] finish-reader received");
 
         updateLeveling().then(() => {
@@ -231,6 +243,13 @@ export function setupMessaging() {
 
         return true;
 
+      case "reader-active":
+        sendResponse({
+          active: !!document.getElementById(
+            "reader-area-bar"
+          )
+        });
+        break;
       case "set-basic-font":
         state.readerSettings.font = msg.value;
         updateReaderStyle();

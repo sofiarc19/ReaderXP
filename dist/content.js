@@ -253,6 +253,7 @@
     timeSpentMs: 0,
     lastInteraction: Date.now(),
     idleIntervalId: null,
+    autosaveId: null,
     // Session tracking
     sessionStartedAt: null,
     totalSessionTime: 0,
@@ -343,33 +344,48 @@
       if (existingIndex !== -1) {
         currentSession = history.splice(existingIndex, 1)[0];
         history.unshift(currentSession);
-        currentSession.wordsRead = (currentSession.wordsRead || 0) + (session.wordsRead || 0);
-        currentSession.totalTimeMs = (currentSession.totalTimeMs || 0) + (session.totalTimeMs || 0);
-        currentSession.totalXp = (currentSession.totalXp || 0) + (session.xpGained || 0);
-        currentSession.coinsGained = (currentSession.coinsGained || 0) + (session.coinsGained || 0);
-        currentSession.percentComplete = Math.max(
-          currentSession.percentComplete || 0,
-          session.percentComplete || 0
-        );
-        currentSession.currentPage = session.currentPage;
-        currentSession.sessionCount = (currentSession.sessionCount || 1) + 1;
-        currentSession.lastReadAt = session.endedAt;
-        currentSession.endedAt = session.endedAt;
+        if (session.isCheckpoint) {
+          currentSession.wordsRead = session.wordsRead;
+          currentSession.totalTimeMs = session.totalTimeMs;
+          currentSession.totalXp = session.totalXp;
+          currentSession.coinsGained = session.coinsGained;
+          currentSession.percentComplete = session.percentComplete;
+          currentSession.currentPage = session.currentPage;
+          currentSession.lastReadAt = session.endedAt;
+          currentSession.endedAt = session.endedAt;
+          currentSession.status = session.status;
+        } else {
+          currentSession.wordsRead = (currentSession.wordsRead || 0) + (session.wordsRead || 0);
+          currentSession.totalTimeMs = (currentSession.totalTimeMs || 0) + (session.totalTimeMs || 0);
+          currentSession.totalXp = session.totalXp;
+          currentSession.coinsGained = (currentSession.coinsGained || 0) + (session.coinsGained || 0);
+          currentSession.percentComplete = Math.max(
+            currentSession.percentComplete || 0,
+            session.percentComplete || 0
+          );
+          currentSession.currentPage = session.currentPage;
+          currentSession.sessionCount = (currentSession.sessionCount || 0) + 1;
+          currentSession.lastReadAt = session.endedAt;
+          currentSession.endedAt = session.endedAt;
+          currentSession.status = session.status;
+        }
       } else {
         currentSession = session;
         history.unshift(currentSession);
       }
-      currentSession.history ??= [];
-      currentSession.history.unshift({
-        startedAt: session.startedAt,
-        endedAt: session.endedAt,
-        xpGained: session.xpGained,
-        coinsGained: session.coinsGained,
-        wordsRead: session.wordsRead,
-        totalTimeMs: session.totalTimeMs,
-        percentComplete: session.percentComplete,
-        currentPage: session.currentPage
-      });
+      if (!session.isCheckpoint) {
+        currentSession.history ??= [];
+        currentSession.history.unshift({
+          startedAt: session.startedAt,
+          endedAt: session.endedAt,
+          xpGained: session.xpGained,
+          coinsGained: session.coinsGained,
+          wordsRead: session.wordsRead,
+          totalTimeMs: session.totalTimeMs,
+          percentComplete: session.percentComplete,
+          currentPage: session.currentPage
+        });
+      }
       if (history.length > MAX_HISTORY) {
         history.length = MAX_HISTORY;
       }
@@ -380,6 +396,21 @@
         );
       });
     });
+  }
+  function saveSessionCheckpoint() {
+    if (!state.sessionStartedAt) return;
+    if (!state.pageIndexMap.length) return;
+    const sessionEnd = state.isPaused && state.pausedAt ? state.pausedAt : Date.now();
+    state.totalSessionTime = sessionEnd - state.sessionStartedAt - state.totalPausedMs;
+    const session = buildReadingSession(state);
+    session.isCheckpoint = true;
+    session.status = state.percentComplete >= 100 ? "completed" : "in_progress";
+    saveReadingSession(session);
+    console.log(
+      "[CHECKPOINT]",
+      session.currentPage + 1,
+      session.percentComplete
+    );
   }
 
   // content/blur.js
@@ -436,6 +467,10 @@
     if (state.idleIntervalId) {
       clearInterval(state.idleIntervalId);
       state.idleIntervalId = null;
+    }
+    if (state.autosaveId) {
+      clearInterval(state.autosaveId);
+      state.autosaveId = null;
     }
     saveReadingSession(session);
     const totalSeconds = Math.floor(session.totalTimeMs / 1e3);
@@ -706,6 +741,7 @@
         state.percentComplete = Math.round(
           (state.currentPage + 1) / state.pageIndexMap.length * 100
         );
+        saveSessionCheckpoint();
         setActiveParagraph();
         chrome.storage.sync.set({
           readingActive: true,
@@ -734,6 +770,7 @@
       console.log("[READER] Interaction: prevPage \u2192 lastInteraction:", state.lastInteraction);
       state.paragraphSwitches++;
       state.currentPage--;
+      saveSessionCheckpoint();
       setActiveParagraph();
     }
   }
@@ -887,6 +924,10 @@
           clearInterval(state.idleIntervalId);
           state.idleIntervalId = null;
         }
+        if (state.autosaveId) {
+          clearInterval(state.autosaveId);
+          state.autosaveId = null;
+        }
         updateLeveling().then(() => {
           state.sessionStatus = state.percentComplete >= 100 ? "completed" : "in_progress";
           chrome.storage.sync.set({
@@ -984,6 +1025,12 @@
                   );
                 }
               }, 5e3);
+              if (state.autosaveId) {
+                clearInterval(state.autosaveId);
+              }
+              state.autosaveId = setInterval(() => {
+                saveSessionCheckpoint();
+              }, 3e4);
               if (msg.settings) {
                 Object.assign(state.readerSettings, msg.settings);
               }
@@ -1056,6 +1103,10 @@
             clearInterval(state.idleIntervalId);
             state.idleIntervalId = null;
           }
+          if (state.autosaveId) {
+            clearInterval(state.autosaveId);
+            state.autosaveId = null;
+          }
           console.log("[MESSAGING] finish-reader received");
           updateLeveling().then(() => {
             state.sessionStatus = state.percentComplete >= 100 ? "completed" : "in_progress";
@@ -1066,6 +1117,13 @@
             sendResponse({ ok: true });
           });
           return true;
+        case "reader-active":
+          sendResponse({
+            active: !!document.getElementById(
+              "reader-area-bar"
+            )
+          });
+          break;
         case "set-basic-font":
           state.readerSettings.font = msg.value;
           updateReaderStyle();

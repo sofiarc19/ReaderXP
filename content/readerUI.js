@@ -155,12 +155,6 @@ export function injectReaderArea() {
     pauseBtn.addEventListener("click", () => {
       console.log("[UI] Pause clicked");
 
-      // document.getElementById("reader-status").textContent =
-      //   "Reading paused";
-
-      // resumeBtn?.classList.remove("hidden");
-      // pauseBtn?.classList.add("hidden");
-
       state.lastInteraction = Date.now();
       state.isPaused = true;
       state.pausedAt = Date.now();
@@ -182,7 +176,10 @@ export function injectReaderArea() {
         clearInterval(state.idleIntervalId);
         state.idleIntervalId = null;
       }
-
+      if (state.autosaveId) {
+        clearInterval(state.autosaveId);
+        state.autosaveId = null;
+      }
       updateLeveling().then(() => {
         state.sessionStatus =
           state.percentComplete >= 100

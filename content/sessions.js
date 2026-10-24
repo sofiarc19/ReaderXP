@@ -1,3 +1,4 @@
+import { state } from "./state";
 // Build a reading session object
 export function buildReadingSession(state) {
   const coinsEarned =
@@ -60,8 +61,30 @@ export function saveReadingSession(session) {
     let currentSession;
     if (existingIndex !== -1){
       // If there is already an entry for this article grab it add this to start reader as well 
-       currentSession = history.splice(existingIndex, 1)[0];
-        history.unshift(currentSession);
+      currentSession = history.splice(existingIndex, 1)[0];
+      history.unshift(currentSession);
+      // overwrite value if checkpoint
+      if (session.isCheckpoint) {
+        currentSession.wordsRead =
+          session.wordsRead;
+        currentSession.totalTimeMs =
+          session.totalTimeMs;
+        currentSession.totalXp =
+          session.totalXp;
+        currentSession.coinsGained =
+          session.coinsGained;
+        currentSession.percentComplete =
+          session.percentComplete;
+        currentSession.currentPage =
+          session.currentPage;
+        currentSession.lastReadAt =
+          session.endedAt;
+        currentSession.endedAt =
+          session.endedAt;
+        currentSession.status =
+          session.status;
+      } else {
+        // accumulate completed-session values
         currentSession.wordsRead =
           (currentSession.wordsRead || 0) +
           (session.wordsRead || 0);
@@ -69,8 +92,7 @@ export function saveReadingSession(session) {
           (currentSession.totalTimeMs || 0) +
           (session.totalTimeMs || 0);
         currentSession.totalXp =
-          (currentSession.totalXp || 0) +
-          (session.xpGained || 0);
+          session.totalXp;
         currentSession.coinsGained =
           (currentSession.coinsGained || 0) +
           (session.coinsGained || 0);
@@ -79,25 +101,29 @@ export function saveReadingSession(session) {
           session.percentComplete || 0);
         currentSession.currentPage = session.currentPage;
         currentSession.sessionCount =
-          (currentSession.sessionCount || 1) + 1;
+          (currentSession.sessionCount || 0) + 1;
         currentSession.lastReadAt = session.endedAt;
         currentSession.endedAt = session.endedAt;
+        currentSession.status = session.status;
+      }
     } else {
       // Otherwise its a brand new article so we need to add it to the sync storage
       currentSession = session;
        history.unshift(currentSession);
     }
-    currentSession.history ??= [];
-    currentSession.history.unshift({
-        startedAt: session.startedAt,
-        endedAt: session.endedAt,
-        xpGained: session.xpGained,
-        coinsGained: session.coinsGained,
-        wordsRead: session.wordsRead,
-        totalTimeMs: session.totalTimeMs,
-        percentComplete: session.percentComplete,
-        currentPage: session.currentPage,
-      })
+    if (!session.isCheckpoint) {
+      currentSession.history ??= [];
+      currentSession.history.unshift({
+          startedAt: session.startedAt,
+          endedAt: session.endedAt,
+          xpGained: session.xpGained,
+          coinsGained: session.coinsGained,
+          wordsRead: session.wordsRead,
+          totalTimeMs: session.totalTimeMs,
+          percentComplete: session.percentComplete,
+          currentPage: session.currentPage,
+        })
+    }
 
     if (history.length > MAX_HISTORY) {
       history.length = MAX_HISTORY;
@@ -200,4 +226,36 @@ export function addReadingToTopic(topicId, reading) {
       readingsessions: sessions,
     });
   });
+}
+
+// Session save on reload helper
+export function saveSessionCheckpoint() {
+  if (!state.sessionStartedAt) return;
+  if (!state.pageIndexMap.length) return;
+
+  const sessionEnd =
+    state.isPaused && state.pausedAt
+      ? state.pausedAt
+      : Date.now();
+
+  state.totalSessionTime =
+    sessionEnd
+    - state.sessionStartedAt
+    - state.totalPausedMs;
+
+  const session = buildReadingSession(state);
+  session.isCheckpoint = true;
+
+  session.status =
+    state.percentComplete >= 100
+      ? "completed"
+      : "in_progress";
+
+  saveReadingSession(session);
+
+  console.log(
+    "[CHECKPOINT]",
+    session.currentPage + 1,
+    session.percentComplete
+  );
 }

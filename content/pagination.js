@@ -2,6 +2,7 @@ import { state } from "./state.js";
 import { renderChunk, updateReaderProgress } from "./readerUI.js";
 import { extractSentences } from "./sentenceProcessing.js";
 import { showSummaryPage } from "./summary.js";
+import { saveSessionCheckpoint } from "./sessions.js";
 
 // Character Thresholds
 const SHORT_THRESHOLD = 300;
@@ -246,7 +247,7 @@ export function nextPage() {
           ((state.currentPage + 1) /
             state.pageIndexMap.length) * 100
         );
-
+      saveSessionCheckpoint();
       setActiveParagraph();
 
       chrome.storage.sync.set({
@@ -284,6 +285,7 @@ export function prevPage() {
 
     state.paragraphSwitches++;
     state.currentPage--;
+    saveSessionCheckpoint();
     setActiveParagraph();
   }
 }

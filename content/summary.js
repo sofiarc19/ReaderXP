@@ -28,7 +28,10 @@ export function showSummaryPage() {
     clearInterval(state.idleIntervalId);
     state.idleIntervalId = null;
   }
-
+  if (state.autosaveId) {
+    clearInterval(state.autosaveId);
+    state.autosaveId = null;
+  }
   saveReadingSession(session);
 
   const totalSeconds =

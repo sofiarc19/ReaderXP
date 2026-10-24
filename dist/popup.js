@@ -1,9 +1,73 @@
 (() => {
+  // content/state.js
+  var state = {
+    allSentences: [],
+    pageIndexMap: [],
+    currentPage: 0,
+    // Time tracking
+    // Reader timing (used for active reading detection)
+    timeStarted: null,
+    timeSpentMs: 0,
+    lastInteraction: Date.now(),
+    idleIntervalId: null,
+    autosaveId: null,
+    // Session tracking
+    sessionStartedAt: null,
+    totalSessionTime: 0,
+    pausedAt: null,
+    isPaused: false,
+    totalPausedMs: 0,
+    sessionXp: 0,
+    coinsAtStart: 0,
+    levelAtStart: 1,
+    // Reading stats
+    articleTitle: "",
+    articleUrl: "",
+    articleWordCount: 0,
+    // total words in article
+    currentPageWords: 0,
+    // words in visible page
+    wordsReadSoFar: 0,
+    // accumulated words read
+    percentComplete: 0,
+    sessionStatus: "active",
+    topicId: null,
+    sessionCategory: "Reading",
+    sessionTags: [],
+    sessionNotes: [],
+    // Reader progress
+    paragraphSwitches: 0,
+    // Track which paragraphs have already given XP
+    paragraphXpMap: /* @__PURE__ */ new Set(),
+    // Leveling system
+    level: 1,
+    xp: 0,
+    coins: 0,
+    // The actual slice of sentences being displayed
+    currentChunk: null,
+    // Index of the first sentence in the current chunk
+    activeElement: null,
+    // cacheing prevents recalculating density and difficulty every time the user switches pages.
+    paragraphCache: /* @__PURE__ */ new Map(),
+    readerSettings: {
+      font: "sans-serif",
+      fontSize: "16px",
+      bionic: false,
+      theme: "theme-dark"
+    }
+  };
+
   // content/sessions.js
   function loadHistory(callback) {
     chrome.storage.sync.get(["history"], (data) => {
       callback(data.history || []);
     });
+  }
+
+  // content/summary.js
+  function resumeReadingPage() {
+    document.getElementById("reader-paused")?.classList.add("hidden");
+    document.getElementById("reader-page")?.classList.remove("hidden");
   }
 
   // popup/popup.js
@@ -257,6 +321,7 @@
     $("#reader-status").textContent = "Reading now";
     $("#reader-resume-popup")?.classList.add("hidden");
     $("#reader-pause-popup")?.classList.remove("hidden");
+    resumeReadingPage();
     sendToReader("resume-reader");
     chrome.storage.sync.set({
       isPaused: false
@@ -370,7 +435,7 @@
     const meta = document.getElementById("sessionsNextMeta");
     if (!title || !meta) return;
     title.textContent = session.title;
-    meta.textContent = `${session.wordsRead || 0} words \u2022 ${session.xpGained} XP earned \u2022 ${session.sessionCount || 1} sessions`;
+    meta.textContent = `${session.wordsRead || 0} words \u2022 ${session.totalXp || session.xpGained || 0} XP earned \u2022 ${session.sessionCount || 1} sessions`;
   }
   document.getElementById("refreshHistory")?.addEventListener("click", () => {
     loadHistory((history) => {
@@ -470,7 +535,8 @@
       window.close();
     }
   );
-  document.addEventListener("DOMContentLoaded", () => {
+  document.addEventListener("DOMContentLoaded", async () => {
+    await validateReaderState();
     updateReaderPopupStats();
     checkForPreviousSession();
     setInterval(() => {
@@ -480,4 +546,26 @@
       renderSessionList(history);
     });
   });
+  async function validateReaderState() {
+    const tab = await getActiveTab();
+    if (!tab?.id) return;
+    try {
+      const response = await sendMessageToTab(tab.id, {
+        action: "reader-active"
+      });
+      if (!response?.active) {
+        chrome.storage.sync.set({
+          readingActive: false,
+          isPaused: false
+        });
+        $("#reader-active-popup")?.classList.add("hidden");
+        $("#reader-prestart")?.classList.remove("hidden");
+      }
+    } catch {
+      chrome.storage.sync.set({
+        readingActive: false,
+        isPaused: false
+      });
+    }
+  }
 })();

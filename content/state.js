@@ -10,6 +10,7 @@ export const state = {
   timeSpentMs: 0,
   lastInteraction: Date.now(),
   idleIntervalId: null,
+  autosaveId: null,
 
   // Session tracking
   sessionStartedAt: null,

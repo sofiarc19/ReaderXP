@@ -3,7 +3,7 @@ const api = typeof browser !== "undefined" ? browser : chrome;
 window.browser = api;
 
 import { loadHistory } from "../content/sessions";
-
+import { resumeReadingPage } from "../content/summary";
 // Utility selectors
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -334,7 +334,7 @@ $("#reader-resume-popup")
 
     $("#reader-pause-popup")
       ?.classList.remove("hidden");
-
+    resumeReadingPage();
     sendToReader("resume-reader");
 
     chrome.storage.sync.set({
@@ -517,7 +517,7 @@ function showSessionSummary(session) {
 
   meta.textContent =
     `${session.wordsRead || 0} words • ` +
-    `${session.xpGained} XP earned • ` +
+    `${session.totalXp || session.xpGained || 0} XP earned • ` +
     `${session.sessionCount || 1} sessions`;
 }
 
@@ -683,11 +683,15 @@ $("#closePopover")?.addEventListener("click",
   }
 );
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  await validateReaderState();
+
   // Reader popup stats
   updateReaderPopupStats();
+
   // Show previous session if any
   checkForPreviousSession();
+
   setInterval(() => {
     updateReaderPopupStats();
   }, 1000);
@@ -697,3 +701,38 @@ document.addEventListener("DOMContentLoaded", () => {
     renderSessionList(history);
   });
 });
+
+async function validateReaderState() {
+  const tab = await getActiveTab();
+
+  if (!tab?.id) return;
+
+  try {
+
+    const response =
+      await sendMessageToTab(tab.id, {
+        action: "reader-active",
+      });
+
+    if (!response?.active) {
+
+      chrome.storage.sync.set({
+        readingActive: false,
+        isPaused: false,
+      });
+
+      $("#reader-active-popup")
+        ?.classList.add("hidden");
+
+      $("#reader-prestart")
+        ?.classList.remove("hidden");
+    }
+
+  } catch {
+
+    chrome.storage.sync.set({
+      readingActive: false,
+      isPaused: false,
+    });
+  }
+}
