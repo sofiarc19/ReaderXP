@@ -4,6 +4,7 @@ window.browser = api;
 
 import { loadHistory } from "../content/sessions";
 import { resumeReadingPage } from "../content/summary";
+import { loadPet, savePet, renderPet, careForPet } from "./pet";
 // Utility selectors
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -358,8 +359,6 @@ function updateReaderPopupStats() {
   api.storage.sync.get(
     [
       "sessionXp",
-      "coinsGained",
-      "coins",
       "wordsReadSoFar",
       "percentComplete",
       "sessionStartedAt",
@@ -407,8 +406,6 @@ function updateReaderPopupStats() {
       }
 
       const xp = data.sessionXp || 0;
-      //const coins = data.coins || 0;
-      const coinsGained = data.coinsGained || 0;
       const words = data.wordsReadSoFar || 0;
 
       let timeText = "00:00";
@@ -444,14 +441,6 @@ function updateReaderPopupStats() {
         "reader-xp-popup"
       ).textContent = `+${xp}`;
 
-      // document.getElementById(
-      //   "reader-coin-popup"
-      // ).textContent = `Coins earned: ${coins}`;
-      document.getElementById(
-        "reader-coin-popup"
-      ).textContent =
-        `${coinsGained}`;
-        //🪙
       const progress =
         data.percentComplete || 0;
 
@@ -521,6 +510,7 @@ function showSessionSummary(session) {
     `${session.sessionCount || 1} sessions`;
 }
 
+//doesnt do anything atm
 document
   .getElementById("refreshHistory")?.addEventListener("click", () => {
     loadHistory((history) => {
@@ -593,7 +583,7 @@ function checkForPreviousSession() {
               if (metaEl) {
                 metaEl.textContent =
                   `${session.wordsRead || 0} words • ` +
-                  `${session.totalXp || session.xpGained || 0} XP • ` +
+                  `${session.totalXp || 0} XP • ` +
                   `${session.percentComplete || 0}% complete • ` +
                   `Page ${(session.currentPage ?? 0) + 1}`;
               }
@@ -638,25 +628,14 @@ document
   });
 
 // Pet Panel
-$("#carePet")?.addEventListener("click",
-  () => {
-    const status = $("#petStatus");
-    const mood = $("#petMood");
-    
-    if (
-      status.textContent.includes(
-      "Wants")
-    ) {
-      status.textContent =
-      "Happy and ready to read";
-      mood.textContent = "Full";
-    } else {
-      status.textContent =
-      "Wants to learn with you";
-      mood.textContent = "Curious";
-    }
-  }
-);
+$("#carePet")?.addEventListener("click", () => {
+
+  loadPet((pet) => {
+    careForPet(pet);
+    savePet(pet);
+    renderPet(pet);
+  });
+});
 
 // Shop
 $$(".shop-categories button").forEach(
@@ -699,6 +678,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Reading sessions
   loadHistory((history) => {
     renderSessionList(history);
+  });
+
+  // Pet
+  loadPet((pet) => {
+    console.log(
+    "[PET] Rendering:",
+    pet
+  );
+    renderPet(pet);
   });
 });
 

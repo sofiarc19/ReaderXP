@@ -49,8 +49,10 @@ export const state = {
   // Leveling system
   level: 1,
   xp: 0,
+  required: 0,
   coins: 0,
-
+  sessionCoinsGained: 0,
+  
   // The actual slice of sentences being displayed
   currentChunk: null,
   // Index of the first sentence in the current chunk

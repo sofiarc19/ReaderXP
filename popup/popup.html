@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>ReaderXP Popup</title>
   <link rel="stylesheet" href="../css/popup.css" />
+  <link rel="stylesheet" href="../css/pet.css" />
 </head>
 
 <body>
@@ -123,49 +124,6 @@
           </div>
     </div>
 
-    <!-- PET PANEL -->
-    <div class="pet-view tab-panel hidden" data-panel="pet">
-      <div class="pet-topline">
-        <span>Your reading buddy</span>
-        <span class="coin-count"><i>$</i> ??</span>
-      </div>
-
-      <div class="pet-stage">
-        <span class="pet-level">Level ?</span>
-        <svg class="pet-art" viewBox="0 0 180 150">
-        </svg>
-      </div>
-
-      <div class="pet-title">
-        <div>
-          <strong>Pet</strong>
-          <span id="petStatus">Wants to learn with you</span>
-        </div>
-        <span class="mood-pill" id="petMood">Current Mood</span>
-      </div>
-
-      <div class="pet-meter">
-        <div>
-          <span>Growth</span>
-          <strong>680 / 800 XP</strong>
-        </div>
-        <div class="pet-progress"><span></span></div>
-      </div>
-
-      <div class="pet-needs">
-        <div><span>Hunger</span><i><b style="width:72%"></b></i><small>72%</small></div>
-        <div><span>Mood</span><i><b style="width:90%"></b></i><small>90%</small></div>
-        <div><span>Hygiene</span><i><b style="width:64%"></b></i><small>64%</small></div>
-        <div><span>Social</span><i><b style="width:80%"></b></i><small>80%</small></div>
-        <div><span>Energy</span><i><b style="width:58%"></b></i><small>58%</small></div>
-      </div>
-
-      <div class="pet-actions">
-        <button id="carePet">Care for Pet</button>
-        <button data-tab-switch="shop">Go to shop</button>
-      </div>
-    </div>
-
     <!-- READING SESSIONS PANEL -->
     <div class="sessions-view tab-panel hidden" data-panel="sessions">
 
@@ -199,6 +157,77 @@
 
     </div>
 
+    <!-- PET PANEL -->
+    <div class="pet-view tab-panel hidden" data-panel="pet">
+      <div class="pet-topline">
+        <span>Your reading buddy</span>
+        <span class="coin-count">
+          <i>$</i>
+          <span id="petCoins">0</span>
+        </span>
+      </div>
+
+      <div class="pet-stage">
+        <span class="pet-level">Level ?</span>
+        <div class="pet-display">
+          <div class="pet-room">
+            <div id="petSprite" class="pet-sprite"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pet-title">
+        <div>
+          <strong>Pet</strong>
+          <span id="petStatus">Wants to learn with you</span>
+        </div>
+        <span class="mood-pill" id="petMood">Current Mood</span>
+      </div>
+
+      <div class="pet-meter">
+        <div>
+          <span>Level</span>
+          <strong id="pet-level">0 / 100 XP</strong>
+        </div>
+        <div class="pet-progress">
+        <span id="pet-level-bar"></span>
+      </div>
+      </div>
+
+      <div class="pet-needs">
+        <div>
+          <span>Hunger</span>
+          <i><b id="pet-hunger-bar"></b></i>
+          <small id="pet-hunger-value"></small>
+        </div>
+        <div>
+          <span>Mood</span>
+          <i><b id="pet-mood-bar"></b></i>
+          <small id="pet-mood-value"></small>
+        </div>
+        <div>
+          <span>Hygiene</span>
+          <i><b id="pet-hygiene-bar"></b></i>
+          <small id="pet-hygiene-value"></small>
+        </div>
+        <div>
+          <span>Social</span>
+          <i><b id="pet-social-bar"></b></i>
+          <small id="pet-social-value"></small>
+        </div>
+        <div>
+          <span>Energy</span>
+          <i><b id="pet-energy-bar"></b></i>
+          <small id="pet-energy-value"></small>
+        </div>
+      </div>
+
+      <div class="pet-actions">
+        <button id="carePet">Care for Pet</button>
+        <button data-tab-switch="shop">Go to shop</button>
+      </div>
+    </div>
+
     <!-- SHOP PANEL -->
     <div class="shop-view tab-panel hidden" data-panel="shop">
       <div class="shop-heading">
@@ -206,7 +235,10 @@
           <strong>Pet Suppply Shop</strong>
           <span>Pick up something for your buddy</span>
         </div>
-        <span class="coin-count"><i>$</i></span>
+        <span class="coin-count">
+          <i>$</i>
+          <span id="shopCoins">0</span>
+        </span>
       </div>
 
       <div class="shop-categories">

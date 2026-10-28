@@ -171,39 +171,51 @@ export function updateLeveling() {
     state.xp += gainedXp;
     state.sessionXp += gainedXp;
 
-    // Mark paragraph as rewarded 
+    // Mark paragraph as rewarded
     state.paragraphXpMap.add(paragraphId);
-    
-    // Level up check 
-    const required = state.level * 100;
 
-    while (state.xp >= state.level * 100) {
-      state.xp -= state.level * 100;
+    // Level up check
+    while (state.xp >= getRequiredXp(state.level)) {
+
+      state.xp -= getRequiredXp(state.level);
+      
+      const levelReward =
+        getLevelUpCoins(
+          state.level + 1
+        );
+
       state.level++;
-      state.coins = (state.coins || 0) + 1;
+
+      state.coins += levelReward;
+      // could be wrong:
+      state.sessionCoinsGained += levelReward;
 
       console.log(
         "[LEVEL] Level up! New level:",
-        state.level
+        state.level,
+        "Coins Earned:",
+        levelReward
       );
     }
 
-    const coinsGained = Math.max(0, (state.coins || 0) - (state.coinsAtStart || 0));
+    // XP required for next level
+    state.required = getRequiredXp(state.level);
 
     console.log(
       "[LEVEL] XP Award:", gainedXp,
       "Current XP:", state.xp, 
-      "/ Required:", required,
-      "Multiplier:", xpMultiplier,
+      "/ Required:", state.required,
+      "Mood Multiplier:", xpMultiplier,
+      "Coins Gained:", state.sessionCoinsGained,
       "Session Count:", sessionCount);
     // Save progression
     chrome.storage.sync.set(
       {
         sessionXp: state.sessionXp,
         xp: state.xp,
+        required: state.required,
         level: state.level,
         coins: state.coins,
-        coinsGained,
       },
       () => {
         console.log(
@@ -359,4 +371,19 @@ function getParagraphDifficulty(sentences) {
   xp = Math.min(xp, 30);
 
   return Math.round(xp);
+}
+
+// xp helper 
+function getRequiredXp(level) {
+  return 100 + ((level - 1) * 50);
+}
+
+//coin helper 
+function getLevelUpCoins(level) {
+  if (level <= 5) return 5;
+  if (level <= 10) return 10;
+  if (level <= 20) return 15;
+
+  // After level 20:
+  return 20 + Math.floor((level - 21) / 10) * 2;
 }

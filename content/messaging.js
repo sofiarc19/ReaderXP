@@ -20,13 +20,13 @@ export function setupMessaging() {
         return false;
 
       case "start-reader":
-        chrome.storage.sync.get(["xp", "level", "coins", "coinsGained"], (data) => {
+        chrome.storage.sync.get(["xp", "level", "required", "coins"], (data) => {
           try {
             // Load persistent player progression (these survive across sessions)
             if (data.xp !== undefined) state.xp = data.xp;
             if (data.level !== undefined) state.level = data.level;
+            if (data.required !== undefined) state.required = data.required;
             if (data.coins !== undefined) state.coins = data.coins;
-            if (data.coinsGained !== undefined) state.coinsGained = data.coinsGained;
             console.log("[LEVEL] Loaded XP + Level:", state.xp, state.level);
 
             // Start a NEW reading session
@@ -43,10 +43,12 @@ export function setupMessaging() {
             // Reading progress
             state.wordsReadSoFar = 0;
             state.currentPageWords = 0;
-            // XP tracking
+           // XP / Coin tracking
             state.coinsAtStart = state.coins;
             state.levelAtStart = state.level;
+
             state.sessionXp = 0;
+            state.sessionCoinsGained = 0;
             // Progress tracking
             state.percentComplete = 0;
             state.paragraphSwitches = 0;
@@ -74,7 +76,7 @@ export function setupMessaging() {
               sessionStartedAt: state.sessionStartedAt,
               articleTitle: document.title,
 
-              coinsGained: 0,
+              //coinsGained: 0,
               sessionXp: 0,
               wordsReadSoFar: 0,
               currentPageWords: 0,

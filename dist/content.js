@@ -285,7 +285,9 @@
     // Leveling system
     level: 1,
     xp: 0,
+    required: 0,
     coins: 0,
+    sessionCoinsGained: 0,
     // The actual slice of sentences being displayed
     currentChunk: null,
     // Index of the first sentence in the current chunk
@@ -302,7 +304,7 @@
 
   // content/sessions.js
   function buildReadingSession(state2) {
-    const coinsEarned = (state2.coins || 0) - (state2.coinsAtStart || 0);
+    const coinsEarned = state2.sessionCoinsGained || 0;
     return {
       id: crypto.randomUUID(),
       title: document.title,
@@ -397,6 +399,17 @@
       });
     });
   }
+  function getSessionCoinReward(percentComplete) {
+    let coins = Math.max(
+      1,
+      Math.floor(percentComplete / 10)
+    );
+    if (percentComplete >= 100) {
+      coins += 5;
+      state.sessionCoinsGained += 5;
+    }
+    return coins;
+  }
   function saveSessionCheckpoint() {
     if (!state.sessionStartedAt) return;
     if (!state.pageIndexMap.length) return;
@@ -404,13 +417,81 @@
     state.totalSessionTime = sessionEnd - state.sessionStartedAt - state.totalPausedMs;
     const session = buildReadingSession(state);
     session.isCheckpoint = true;
+    session.coinsGained = 0;
     session.status = state.percentComplete >= 100 ? "completed" : "in_progress";
     saveReadingSession(session);
     console.log(
       "[CHECKPOINT]",
+      "Page:",
       session.currentPage + 1,
-      session.percentComplete
+      "Progress:",
+      session.percentComplete + "%"
     );
+  }
+
+  // popup/pet.js
+  var DEFAULT_PET = {
+    name: "Reading Buddy",
+    hunger: 100,
+    mood: 100,
+    hygiene: 100,
+    social: 100,
+    energy: 100,
+    lastUpdated: Date.now(),
+    //evolutionStage: 1,
+    inventory: []
+  };
+  function loadPet(callback) {
+    chrome.storage.sync.get(
+      ["pet"],
+      (data) => {
+        const pet = data.pet || { ...DEFAULT_PET };
+        updatePetDecay(pet);
+        savePet(pet);
+        callback(pet);
+      }
+    );
+  }
+  function savePet(pet) {
+    chrome.storage.sync.set({ pet });
+  }
+  function updatePetDecay(pet) {
+    const now = Date.now();
+    const hoursPassed = (now - pet.lastUpdated) / (1e3 * 60 * 60);
+    pet.hunger = Math.max(0, pet.hunger - hoursPassed * 2);
+    pet.energy = Math.max(0, pet.energy - hoursPassed * 1);
+    pet.social = Math.max(0, pet.social - hoursPassed * 1);
+    pet.hygiene = Math.max(0, pet.hygiene - hoursPassed * 0.5);
+    if (pet.hunger < 25 || pet.energy < 25 || pet.social < 25 || pet.hygiene < 25) {
+      pet.mood = Math.max(0, pet.mood - 5);
+    }
+    pet.lastUpdated = now;
+  }
+  function rewardPetForReading(pet, session) {
+    pet.mood = Math.min(
+      100,
+      pet.mood + Math.ceil(session.xpGained / 5)
+    );
+    pet.social = Math.min(
+      100,
+      pet.social + 5
+    );
+    pet.energy = Math.min(
+      100,
+      pet.energy + 3
+    );
+  }
+  function getMoodCoinMultiplier(pet) {
+    if (pet.mood >= 80) {
+      return 1.2;
+    }
+    if (pet.mood >= 50) {
+      return 1;
+    }
+    if (pet.mood >= 25) {
+      return 0.9;
+    }
+    return 0.8;
   }
 
   // content/blur.js
@@ -463,7 +544,6 @@
     state.isPaused = false;
     state.pausedAt = null;
     state.totalSessionTime = Date.now() - state.sessionStartedAt - state.totalPausedMs;
-    const session = buildReadingSession(state);
     if (state.idleIntervalId) {
       clearInterval(state.idleIntervalId);
       state.idleIntervalId = null;
@@ -472,81 +552,116 @@
       clearInterval(state.autosaveId);
       state.autosaveId = null;
     }
-    saveReadingSession(session);
-    const totalSeconds = Math.floor(session.totalTimeMs / 1e3);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor(totalSeconds % 3600 / 60);
-    const seconds = totalSeconds % 60;
-    const formattedTime = hours > 0 ? `${hours}h ${minutes}m ${seconds}s` : `${minutes}m ${seconds}s`;
-    document.getElementById("reader-page")?.classList.add("hidden");
-    document.getElementById("reader-paused")?.classList.add("hidden");
-    document.getElementById("reader-summary")?.classList.remove("hidden");
-    document.getElementById("summary-content").innerHTML = `
-  
-    <div class="summary-header">
-      <h1>Reading Summary</h1>
-      <p>Your session has been saved.</p>
-    </div>
-
-    <div class="summary-stats">
-
-      <div class="summary-stat">
-        <span>Title</span>
-        <strong>${session.title}</strong>
-      </div>
-
-      <div class="summary-stat">
-        <span>Session Stats:</span>
-        <strong> Gained: +${session.xpGained} XP</strong>
-        <strong> / Total: ${session.totalXp} XP</strong>
-        <strong> / Current Level: ${state.level} </strong>
-        <strong class="coin-count"> / Coins Earned: <i>$</i> ${session.coinsGained}</strong>
-      </div>
-
-      <div class="summary-stat">
-        <span>Words Read</span>
-        <strong>${session.wordsRead}</strong>
-      </div>
-
-      <div class="summary-stat">
-        <span>Time Reading</span>
-        <strong>${formattedTime}</strong>
-      </div>
-
-      <div class="summary-stat">
-        <span>Progress</span>
-        <strong>${(session.percentComplete || 0).toFixed(1)}%</strong>
-      </div>
-
-    </div>
-
-    <div class="summary-actions">
-
-      <button id="summary-pet-shop">
-        Go To Pet Shop
-      </button>
-
-      <button id="summary-close-btn">
-        Close
-      </button>
-
-    </div>
-
-    <div id="summary-topic-picker" class="hidden"></div>
-  `;
-    document.getElementById("summary-close-btn")?.addEventListener("click", () => {
-      chrome.storage.sync.set({
-        readingActive: false
-      });
-      toggleBlur();
-      document.getElementById("reader-area-bar")?.remove();
-    });
-    document.getElementById("summary-pet-shop")?.addEventListener("click", () => {
-      toggleBlur();
-      document.getElementById("reader-area-bar")?.remove();
-      console.log(
-        "[SUMMARY] Open pet shop later"
+    loadPet((pet) => {
+      const sessionCoins = getSessionCoinReward(
+        state.percentComplete
       );
+      const multiplier = getMoodCoinMultiplier(pet);
+      const finalCoins = Math.max(
+        1,
+        Math.round(
+          sessionCoins * multiplier
+        )
+      );
+      state.sessionCoinsGained = finalCoins;
+      state.coins += finalCoins;
+      chrome.storage.sync.set({
+        coins: state.coins,
+        sessionXp: state.sessionXp
+      });
+      rewardPetForReading(
+        pet,
+        {
+          xpGained: state.sessionXp
+        }
+      );
+      savePet(pet);
+      console.log(
+        "[COINS]",
+        {
+          percentComplete: state.percentComplete,
+          baseCoins: sessionCoins,
+          mood: pet.mood,
+          multiplier,
+          finalCoins
+        }
+      );
+      const session = buildReadingSession(state);
+      saveReadingSession(session);
+      const totalSeconds = Math.floor(session.totalTimeMs / 1e3);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor(totalSeconds % 3600 / 60);
+      const seconds = totalSeconds % 60;
+      const formattedTime = hours > 0 ? `${hours}h ${minutes}m ${seconds}s` : `${minutes}m ${seconds}s`;
+      document.getElementById("reader-page")?.classList.add("hidden");
+      document.getElementById("reader-paused")?.classList.add("hidden");
+      document.getElementById("reader-summary")?.classList.remove("hidden");
+      document.getElementById("summary-content").innerHTML = `
+    
+      <div class="summary-header">
+        <h1>Reading Summary</h1>
+        <p>Your session has been saved.</p>
+      </div>
+
+      <div class="summary-stats">
+
+        <div class="summary-stat">
+          <span>Title</span>
+          <strong>${session.title}</strong>
+        </div>
+
+        <div class="summary-stat">
+          <span>Session Stats:</span>
+          <strong> Gained: +${session.xpGained} XP</strong>
+          <strong> / Current Level: ${state.level} </strong>
+          <strong class="coin-count"> / Coins Earned: <i>$</i> ${session.coinsGained}</strong>
+        </div>
+
+        <div class="summary-stat">
+          <span>Words Read</span>
+          <strong>${session.wordsRead}</strong>
+        </div>
+
+        <div class="summary-stat">
+          <span>Time Reading</span>
+          <strong>${formattedTime}</strong>
+        </div>
+
+        <div class="summary-stat">
+          <span>Progress</span>
+          <strong>${(session.percentComplete || 0).toFixed(1)}%</strong>
+        </div>
+
+      </div>
+
+      <div class="summary-actions">
+
+        <button id="summary-pet-shop">
+          Go To Pet Shop
+        </button>
+
+        <button id="summary-close-btn">
+          Close
+        </button>
+
+      </div>
+
+      <div id="summary-topic-picker" class="hidden"></div>
+    `;
+      document.getElementById("summary-close-btn")?.addEventListener("click", () => {
+        chrome.storage.sync.set({
+          readingActive: false
+        });
+        toggleBlur();
+        document.getElementById("reader-area-bar")?.remove();
+      });
+      document.getElementById("summary-pet-shop")?.addEventListener("click", () => {
+        toggleBlur();
+        document.getElementById("reader-area-bar")?.remove();
+        console.log(
+          "[SUMMARY] Open pet shop later"
+        );
+      });
     });
   }
   function showPausedPage() {
@@ -682,26 +797,33 @@
         state.xp += gainedXp;
         state.sessionXp += gainedXp;
         state.paragraphXpMap.add(paragraphId);
-        const required = state.level * 100;
-        while (state.xp >= state.level * 100) {
-          state.xp -= state.level * 100;
+        while (state.xp >= getRequiredXp(state.level)) {
+          state.xp -= getRequiredXp(state.level);
+          const levelReward = getLevelUpCoins(
+            state.level + 1
+          );
           state.level++;
-          state.coins = (state.coins || 0) + 1;
+          state.coins += levelReward;
+          state.sessionCoinsGained += levelReward;
           console.log(
             "[LEVEL] Level up! New level:",
-            state.level
+            state.level,
+            "Coins Earned:",
+            levelReward
           );
         }
-        const coinsGained = Math.max(0, (state.coins || 0) - (state.coinsAtStart || 0));
+        state.required = getRequiredXp(state.level);
         console.log(
           "[LEVEL] XP Award:",
           gainedXp,
           "Current XP:",
           state.xp,
           "/ Required:",
-          required,
-          "Multiplier:",
+          state.required,
+          "Mood Multiplier:",
           xpMultiplier,
+          "Coins Gained:",
+          state.sessionCoinsGained,
           "Session Count:",
           sessionCount
         );
@@ -709,9 +831,9 @@
           {
             sessionXp: state.sessionXp,
             xp: state.xp,
+            required: state.required,
             level: state.level,
-            coins: state.coins,
-            coinsGained
+            coins: state.coins
           },
           () => {
             console.log(
@@ -809,6 +931,15 @@
     xp = Math.max(xp, 3);
     xp = Math.min(xp, 30);
     return Math.round(xp);
+  }
+  function getRequiredXp(level) {
+    return 100 + (level - 1) * 50;
+  }
+  function getLevelUpCoins(level) {
+    if (level <= 5) return 5;
+    if (level <= 10) return 10;
+    if (level <= 20) return 15;
+    return 20 + Math.floor((level - 21) / 10) * 2;
   }
 
   // content/readerUI.js
@@ -960,12 +1091,12 @@
           sendResponse({ ok: true });
           return false;
         case "start-reader":
-          chrome.storage.sync.get(["xp", "level", "coins", "coinsGained"], (data) => {
+          chrome.storage.sync.get(["xp", "level", "required", "coins"], (data) => {
             try {
               if (data.xp !== void 0) state.xp = data.xp;
               if (data.level !== void 0) state.level = data.level;
+              if (data.required !== void 0) state.required = data.required;
               if (data.coins !== void 0) state.coins = data.coins;
-              if (data.coinsGained !== void 0) state.coinsGained = data.coinsGained;
               console.log("[LEVEL] Loaded XP + Level:", state.xp, state.level);
               state.sessionStartedAt = Date.now();
               state.allSentences = [];
@@ -980,6 +1111,7 @@
               state.coinsAtStart = state.coins;
               state.levelAtStart = state.level;
               state.sessionXp = 0;
+              state.sessionCoinsGained = 0;
               state.percentComplete = 0;
               state.paragraphSwitches = 0;
               state.topicId = null;
@@ -997,7 +1129,7 @@
                 readingActive: true,
                 sessionStartedAt: state.sessionStartedAt,
                 articleTitle: document.title,
-                coinsGained: 0,
+                //coinsGained: 0,
                 sessionXp: 0,
                 wordsReadSoFar: 0,
                 currentPageWords: 0,

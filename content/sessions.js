@@ -1,9 +1,7 @@
 import { state } from "./state";
 // Build a reading session object
 export function buildReadingSession(state) {
-  const coinsEarned =
-    (state.coins || 0) -
-    (state.coinsAtStart || 0);
+  const coinsEarned = state.sessionCoinsGained || 0;
   return {
     id: crypto.randomUUID(),
 
@@ -152,6 +150,21 @@ export function loadsessions(callback) {
   });
 }
 
+// Coin helper
+export function getSessionCoinReward(percentComplete) {
+  let coins = Math.max(
+    1,
+    Math.floor(percentComplete / 10)
+  );
+  // Completion bonus
+  if (percentComplete >= 100) {
+    coins += 5;
+    state.sessionCoinsGained += 5; //?
+  }
+
+  return coins;
+}
+
 export function createTopic(title) {
   chrome.storage.sync.get(["readingsessions"], (data) => {
     const sessions = data.readingsessions || [];
@@ -202,6 +215,10 @@ export function addReadingToTopic(topicId, reading) {
         (existingReading.xpGained || 0) +
         (reading.xpGained || 0);
 
+      existingReading.coinsGained =
+        (existingReading.coinsGained || 0) +
+        (reading.coinsGained || 0);
+
       existingReading.percentComplete = Math.max(
         existingReading.percentComplete || 0,
         reading.percentComplete || 0
@@ -245,6 +262,7 @@ export function saveSessionCheckpoint() {
 
   const session = buildReadingSession(state);
   session.isCheckpoint = true;
+  session.coinsGained = 0;
 
   session.status =
     state.percentComplete >= 100
@@ -255,7 +273,9 @@ export function saveSessionCheckpoint() {
 
   console.log(
     "[CHECKPOINT]",
+    "Page:",
     session.currentPage + 1,
-    session.percentComplete
+    "Progress:",
+    session.percentComplete + "%"
   );
 }
