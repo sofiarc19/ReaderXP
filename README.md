@@ -1,4 +1,4 @@
-# Focus Reader
+# ReaderXP
 
 A Chrome/Firefox reading-focus browser extension. It blurs the page, pulls out the main article text, and shows it one chunk at a time in a focused reader bar.
 
