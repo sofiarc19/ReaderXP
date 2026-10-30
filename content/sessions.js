@@ -1,7 +1,6 @@
 import { state } from "./state";
 // Build a reading session object
 export function buildReadingSession(state) {
-  const coinsEarned = state.sessionCoinsGained || 0;
   return {
     id: crypto.randomUUID(),
 
@@ -22,7 +21,19 @@ export function buildReadingSession(state) {
     xpGained: state.sessionXp || 0,
     totalXp: state.xp,
 
-    coinsGained: coinsEarned,
+    coinsGained: state.sessionCoinsGained,
+    coinBreakdown: {
+      readingCoins:
+        state.sessionReadingCoins,
+
+      levelCoins:
+        state.sessionLevelCoins,
+
+      totalCoins:
+        state.sessionCoinsGained
+    },
+    coinsAtStart: state.coinsAtStart,
+    coinsAtEnd: state.coins,
 
     levelAtStart: state.levelAtStart,
     levelAtEnd: state.level,
@@ -150,19 +161,27 @@ export function loadsessions(callback) {
   });
 }
 
-// Coin helper
-export function getSessionCoinReward(percentComplete) {
-  let coins = Math.max(
-    1,
-    Math.floor(percentComplete / 10)
-  );
-  // Completion bonus
-  if (percentComplete >= 100) {
+// Coin helper: based on words read /500
+// based on progress and amount of words
+export function getSessionCoinReward() {
+  // const progressMade =
+  //   Math.max(0, state.percentComplete - state.sessionStartPercent);
+
+  // const progressReward = Math.floor(progressMade / 10);
+
+  // const effortReward = Math.floor(state.wordsReadSoFar / 1000);
+
+  // let coins = progressReward + effortReward;
+  let coins =
+    Math.floor(
+      state.wordsReadSoFar / 500
+    );
+
+  if (state.percentComplete >= 100) {
     coins += 5;
-    state.sessionCoinsGained += 5; //?
   }
 
-  return coins;
+  return Math.max(1, coins);
 }
 
 export function createTopic(title) {
@@ -215,9 +234,16 @@ export function addReadingToTopic(topicId, reading) {
         (existingReading.xpGained || 0) +
         (reading.xpGained || 0);
 
-      existingReading.coinsGained =
-        (existingReading.coinsGained || 0) +
-        (reading.coinsGained || 0);
+      existingReading.coinBreakdown ??= {
+        readingCoins: 0,
+        levelCoins: 0,
+      };
+
+      existingReading.coinBreakdown.readingCoins +=
+        reading.coinBreakdown?.readingCoins || 0;
+
+      existingReading.coinBreakdown.levelCoins +=
+        reading.coinBreakdown?.levelCoins || 0;
 
       existingReading.percentComplete = Math.max(
         existingReading.percentComplete || 0,

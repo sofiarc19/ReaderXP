@@ -14,7 +14,6 @@
     <div class="popover-header">
       <div>
         <span class="popover-kicker">ReaderXP</span>
-        <span class="popover-kicker">Quick view</span>
       </div>
       <button aria-label="Close reading companion" class="popover-close" id="closePopover">×</button>
     </div>
@@ -40,6 +39,16 @@
                     Start reading
                 </button>
                 <!-- <small>Info</small> -->
+            </div>
+            <div>
+              <label>
+                <span>Reader Settings:</span>
+                <button id="reader-aa">Aa</button>
+              </label>
+              <label>
+                <span>User Stats:</span>
+                <button id="reader-alltime-stats">Info</button>
+              </label>
             </div>
             <div class="reader-settings">
                 <label>
@@ -95,33 +104,46 @@
             </button>
           </div>
         </div>
-          <!-- AFTER READING STARTS -->
-          <div id="reader-active-popup" class="hidden">
-
-              <div id="reader-session-head">
-              <span id="reader-status">Reading now</span>
-              <button id="reader-aa">Aa</button>
-              </div>
-
-              <div class="mini-progress">
-                  <span id="reader-progress-popup"></span>
-              </div>
-
-              <div class="mini-stats">
-                  <div><span>Current Session Stats:</span></div>
-                  <div><span>Time: </span><strong id="reader-time-popup"></strong></div>
-                  <div><span>Words read: </span><strong id="reader-words-popup"></strong></div>
-                  <div><span>XP earned: </span><strong id="reader-xp-popup"></strong></div>
-                  <div><span>Coins earned: </span><strong id="reader-coin-popup"></strong></div>
-              </div>
-
-              <div class="reader-session-actions">
-                  <button id="reader-pause-popup">Pause reading</button>
-                  <!-- <button id="reader-bookmark-popup">Pause & bookmark</button> -->
-                  <button id="reader-resume-popup" class="hidden">Resume</button>
-                  <button id="reader-finish-popup">Finish session</button>
-              </div>
+        <!-- AFTER READING STARTS -->
+        <div id="reader-active-popup" class="hidden">
+          <div id="reader-session-head">
+            <span id="reader-status">Reading now</span>
+            <button id="reader-aa">Aa</button>
           </div>
+
+          <div class="mini-progress">
+            <span id="reader-progress-popup"></span>
+          </div>
+
+          <div class="mini-stats">
+            <div><span>Current Session Stats:</span></div>
+            <div><span>Time: </span><strong id="reader-time-popup"></strong></div>
+            <div><span>Words read: </span><strong id="reader-words-popup"></strong></div>
+            <div><span>XP earned: </span><strong id="reader-xp-popup"></strong></div>
+            <!-- <div><span>Coins earned: </span><strong id="reader-coin-popup"></strong></div> -->
+          </div>
+
+          <div class="reader-session-actions">
+            <button id="reader-pause-popup">Pause reading</button>
+            <button id="reader-resume-popup" class="hidden">Resume</button>
+            <button id="reader-finish-popup">Finish session</button>
+          </div>
+        </div>
+        <!-- User all Time Stats Info -->
+        <!-- WIP -->
+        <div id="all-reader-stats" class="hidden">
+            <strong>Current Stats:</strong>
+            <div><span>Level: </span><strong id="reader-current-level"></strong></div>
+            <div><span>XP: </span><strong id="reader-xp-next"></strong></div>
+            <div><span>Coins: </span><strong id="reader-current-coins"></strong></div>
+            <!-- <strong>User Life time stats (Cummulative total stats):</strong>
+            <div><span>Time: </span><strong id="reader-all-time"></strong></div>
+            <div><span>Words read: </span><strong id="reader-all-words"></strong></div>
+            <div><span>XP earned: </span><strong id="reader-all-xp"></strong></div>
+            <div><span>Coins earned: </span><strong id="reader-all-coins"></strong></div>
+            <div><span>Articles Read: </span><strong id="reader-all-articles"></strong></div> -->
+        </div>
+        
     </div>
 
     <!-- READING SESSIONS PANEL -->
@@ -160,11 +182,31 @@
     <!-- PET PANEL -->
     <div class="pet-view tab-panel hidden" data-panel="pet">
       <div class="pet-topline">
-        <span>Your reading buddy</span>
-        <span class="coin-count">
-          <i>$</i>
-          <span id="petCoins">0</span>
-        </span>
+        <div class="pet-title">
+          <div>
+            <strong>Pet</strong>
+            <div id="petThought" class="pet-thought hidden">
+              💭 Hungry
+            </div>
+          </div>
+          <span class="petStatus" id="petMood">Current Mood</span>
+        </div>
+        <div class="coin-wrapper">
+          <span class="coin-count">
+            <i>$</i>
+            <span id="petCoins">0</span>
+            <!-- <span class="coin-info">
+              ?
+            </span> -->
+
+            <div class="coin-tooltip hidden">
+              Coins are earned by:
+              - Reading progress
+              - Finishing articles
+              - Leveling up
+            </div>
+          </span>
+        </div>
       </div>
 
       <div class="pet-stage">
@@ -176,18 +218,10 @@
         </div>
       </div>
 
-      <div class="pet-title">
-        <div>
-          <strong>Pet</strong>
-          <span id="petStatus">Wants to learn with you</span>
-        </div>
-        <span class="mood-pill" id="petMood">Current Mood</span>
-      </div>
-
       <div class="pet-meter">
         <div>
-          <span>Level</span>
-          <strong id="pet-level">0 / 100 XP</strong>
+          <span id="pet-current-level">Level </span>
+          <strong id="pet-current-xp">0 / 100 XP</strong>
         </div>
         <div class="pet-progress">
         <span id="pet-level-bar"></span>

@@ -187,7 +187,8 @@ export function updateLeveling() {
       state.level++;
 
       state.coins += levelReward;
-      // could be wrong:
+      state.totalCoinsEarned += levelReward;
+      state.sessionLevelCoins += levelReward;
       state.sessionCoinsGained += levelReward;
 
       console.log(
@@ -216,6 +217,8 @@ export function updateLeveling() {
         required: state.required,
         level: state.level,
         coins: state.coins,
+        totalCoinsEarned: state.totalCoinsEarned,
+        totalCoinsSpent: state.totalCoinsSpent,
       },
       () => {
         console.log(

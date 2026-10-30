@@ -19,8 +19,8 @@ export const state = {
   isPaused: false,
   totalPausedMs: 0,
 
+  sessionStartPercent: 0,
   sessionXp: 0,
-  coinsAtStart: 0,
   levelAtStart: 1,
 
   // Reading stats
@@ -50,8 +50,20 @@ export const state = {
   level: 1,
   xp: 0,
   required: 0,
-  coins: 0,
-  sessionCoinsGained: 0,
+
+  // Coin system
+
+  coins: 0,                  // current balance
+
+  totalCoinsEarned: 0,       // lifetime earned
+  totalCoinsSpent: 0,        // lifetime spent
+
+  coinsAtStart: 0,           // balance when session began
+
+  sessionCoinsGained: 0,     // ALL session rewards combined
+
+  sessionLevelCoins: 0,      // from leveling
+  sessionReadingCoins: 0,    // from article progress
   
   // The actual slice of sentences being displayed
   currentChunk: null,

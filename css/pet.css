@@ -20,6 +20,10 @@
   font-size: 9px;
 }
 
+.coin-wrapper:hover .coin-tooltip {
+  display: block;
+}
+
 /* PET PANEL */
 .pet-view { padding: 14px 16px 16px; }
 
@@ -60,14 +64,102 @@
   color: #6870cb;
   background: rgba(255,255,255,.8);
   border-radius: 5px;
-  font-size: 8px;
+  font-size: 8.5px;
   font-weight: 700;
 }
-.pet-art {
+/* .pet-art {
   width: 170px;
   height: 142px;
   z-index: 1;
   align-self: end;
+} */
+.pet-display {
+  position: relative;
+  z-index: 1;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 100%;
+  height: 100%;
+}
+
+.pet-room {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+
+  width: 100%;
+  height: 75%;
+}
+
+/* .pet-sprite {
+  width: 96px;
+  height: 100px;
+
+  background-image: url("../popup/assets/cat/Box1.png");
+  background-repeat: no-repeat;
+
+  background-size: auto 96px;
+  background-position: 0 0;
+
+  image-rendering: pixelated;
+} */
+
+.pet-sprite {
+  width: 96px;
+  height: 100px;
+
+  background-repeat: no-repeat;
+  background-position: 0 0;
+
+  background-size: auto 96px;
+
+  image-rendering: pixelated;
+}
+
+.pet-sprite.content {
+  background-image: url("../popup/assets/cat/Box1.png");
+}
+
+.pet-sprite.cry {
+  background-image: url("../popup/assets/cat/Cry.png");
+}
+.pet-sprite.starving {
+  background-image: url("../popup/assets/cat/catsick1.png");
+}
+
+.pet-sprite.mad {
+  background-image: url("../popup/assets/cat/catsick2.png");
+}
+
+.pet-sprite.waiting {
+  background-image: url("../popup/assets/cat/Waiting.png");
+}
+
+.pet-sprite.sad {
+  background-image: url("../popup/assets/cat/Sad.png");
+}
+
+.pet-sprite.sleepy {
+  background-image: url("../popup/assets/cat/Sleepy.png");
+}
+
+.pet-sprite.superLow {
+  background-image: url("../popup/assets/cat/DeadCat.png");
+}
+
+.pet-sprite.dance {
+  background-image: url("../popup/assets/cat/Dance.png");
+}
+
+.pet-sprite.surprised {
+  background-image: url("../popup/assets/cat/Surprised.png");
+}
+
+.pet-sprite.sleep {
+  background-image: url("../popup/assets/cat/Sleep.png");
 }
 
 /* Pet title */
@@ -75,7 +167,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 12px;
+  /* margin-top: 12px; */
 }
 .pet-title > div { display: grid; gap: 2px; }
 .pet-title strong {
@@ -86,7 +178,7 @@
   color: var(--text-muted);
   font-size: 9px;
 }
-.mood-pill {
+.petStatus {
   padding: 4px 7px;
   color: var(--accent);
   background: var(--surface-hover);
@@ -101,7 +193,7 @@
   display: flex;
   justify-content: space-between;
   color: var(--text-muted);
-  font-size: 8px;
+  font-size: 8.5px;
 }
 .pet-meter strong {
   color: var(--text);
@@ -138,7 +230,7 @@
   align-items: center;
   gap: 7px;
   color: var(--text-muted);
-  font-size: 8px;
+  font-size: 9px;
 }
 .pet-needs > div > i {
   height: 4px;

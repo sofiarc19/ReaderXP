@@ -51,22 +51,20 @@ export function showSummaryPage() {
       );
 
     // Track coins earned THIS session
-    state.sessionCoinsGained = finalCoins;
+    state.sessionReadingCoins = finalCoins;
+    state.sessionCoinsGained += finalCoins;
 
     // Award coins
     state.coins += finalCoins;
+    state.totalCoinsEarned += finalCoins;
 
     chrome.storage.sync.set({
       coins: state.coins,
+      totalCoinsEarned: state.totalCoinsEarned,
       sessionXp: state.sessionXp,
     });
 
-    rewardPetForReading(
-      pet,
-      {
-        xpGained: state.sessionXp
-      }
-    );
+    rewardPetForReading(pet, {xpGained: state.sessionXp});
 
     savePet(pet);
 
@@ -133,20 +131,30 @@ export function showSummaryPage() {
         </div>
 
         <div class="summary-stat">
-          <span>Session Stats:</span>
-          <strong> Gained: +${session.xpGained} XP</strong>
-          <strong> / Current Level: ${state.level} </strong>
-          <strong class="coin-count"> / Coins Earned: <i>$</i> ${session.coinsGained}</strong>
+          <span>Session Stats</span>
+
+          <div class="summary-inline">
+            <strong>+${session.xpGained} XP</strong>
+            <strong>Level: ${state.level}</strong>
+            <strong>Current XP: ${state.xp} / ${state.required}</strong>
+          </div>
         </div>
 
         <div class="summary-stat">
-          <span>Words Read</span>
-          <strong>${session.wordsRead}</strong>
+          <span>Coin Rewards</span>
+          <div class="summary-inline">
+            <strong>Reading: +${state.sessionReadingCoins}</strong>
+            <strong>Level: +${state.sessionLevelCoins}</strong>
+            <strong>Total Coins gained: +${session.coinsGained}</strong>
+          </div>
         </div>
 
         <div class="summary-stat">
-          <span>Time Reading</span>
-          <strong>${formattedTime}</strong>
+        <span>Reading Stats:</span>
+          <div class="summary-inline">
+            <strong>Words Read: ${session.wordsRead}</strong>
+          <strong>Time Reading: ${formattedTime}</strong>
+          </div>
         </div>
 
         <div class="summary-stat">

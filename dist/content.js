@@ -260,8 +260,8 @@
     pausedAt: null,
     isPaused: false,
     totalPausedMs: 0,
+    sessionStartPercent: 0,
     sessionXp: 0,
-    coinsAtStart: 0,
     levelAtStart: 1,
     // Reading stats
     articleTitle: "",
@@ -286,8 +286,21 @@
     level: 1,
     xp: 0,
     required: 0,
+    // Coin system
     coins: 0,
+    // current balance
+    totalCoinsEarned: 0,
+    // lifetime earned
+    totalCoinsSpent: 0,
+    // lifetime spent
+    coinsAtStart: 0,
+    // balance when session began
     sessionCoinsGained: 0,
+    // ALL session rewards combined
+    sessionLevelCoins: 0,
+    // from leveling
+    sessionReadingCoins: 0,
+    // from article progress
     // The actual slice of sentences being displayed
     currentChunk: null,
     // Index of the first sentence in the current chunk
@@ -304,7 +317,6 @@
 
   // content/sessions.js
   function buildReadingSession(state2) {
-    const coinsEarned = state2.sessionCoinsGained || 0;
     return {
       id: crypto.randomUUID(),
       title: document.title,
@@ -318,7 +330,14 @@
       percentComplete: state2.percentComplete,
       xpGained: state2.sessionXp || 0,
       totalXp: state2.xp,
-      coinsGained: coinsEarned,
+      coinsGained: state2.sessionCoinsGained,
+      coinBreakdown: {
+        readingCoins: state2.sessionReadingCoins,
+        levelCoins: state2.sessionLevelCoins,
+        totalCoins: state2.sessionCoinsGained
+      },
+      coinsAtStart: state2.coinsAtStart,
+      coinsAtEnd: state2.coins,
       levelAtStart: state2.levelAtStart,
       levelAtEnd: state2.level,
       paragraphsRead: state2.paragraphSwitches,
@@ -399,16 +418,14 @@
       });
     });
   }
-  function getSessionCoinReward(percentComplete) {
-    let coins = Math.max(
-      1,
-      Math.floor(percentComplete / 10)
+  function getSessionCoinReward() {
+    let coins = Math.floor(
+      state.wordsReadSoFar / 500
     );
-    if (percentComplete >= 100) {
+    if (state.percentComplete >= 100) {
       coins += 5;
-      state.sessionCoinsGained += 5;
     }
-    return coins;
+    return Math.max(1, coins);
   }
   function saveSessionCheckpoint() {
     if (!state.sessionStartedAt) return;
@@ -431,7 +448,7 @@
 
   // popup/pet.js
   var DEFAULT_PET = {
-    name: "Reading Buddy",
+    name: "Pet name",
     hunger: 100,
     mood: 100,
     hygiene: 100,
@@ -470,7 +487,7 @@
   function rewardPetForReading(pet, session) {
     pet.mood = Math.min(
       100,
-      pet.mood + Math.ceil(session.xpGained / 5)
+      pet.mood + Math.ceil(session.xpGained / 10)
     );
     pet.social = Math.min(
       100,
@@ -493,6 +510,21 @@
     }
     return 0.8;
   }
+  window.inspectSprite = (file, frames) => {
+    const img = new Image();
+    img.src = `assets/cat/${file}`;
+    img.onload = () => {
+      const frameWidth = img.width / frames;
+      const scale = 96 / img.height;
+      console.log({
+        imageWidth: img.width,
+        imageHeight: img.height,
+        frames,
+        originalFrameWidth: frameWidth,
+        scaledFrameWidth: frameWidth * scale
+      });
+    };
+  };
 
   // content/blur.js
   var blurEnabled = false;
@@ -563,18 +595,16 @@
           sessionCoins * multiplier
         )
       );
-      state.sessionCoinsGained = finalCoins;
+      state.sessionReadingCoins = finalCoins;
+      state.sessionCoinsGained += finalCoins;
       state.coins += finalCoins;
+      state.totalCoinsEarned += finalCoins;
       chrome.storage.sync.set({
         coins: state.coins,
+        totalCoinsEarned: state.totalCoinsEarned,
         sessionXp: state.sessionXp
       });
-      rewardPetForReading(
-        pet,
-        {
-          xpGained: state.sessionXp
-        }
-      );
+      rewardPetForReading(pet, { xpGained: state.sessionXp });
       savePet(pet);
       console.log(
         "[COINS]",
@@ -611,20 +641,30 @@
         </div>
 
         <div class="summary-stat">
-          <span>Session Stats:</span>
-          <strong> Gained: +${session.xpGained} XP</strong>
-          <strong> / Current Level: ${state.level} </strong>
-          <strong class="coin-count"> / Coins Earned: <i>$</i> ${session.coinsGained}</strong>
+          <span>Session Stats</span>
+
+          <div class="summary-inline">
+            <strong>+${session.xpGained} XP</strong>
+            <strong>Level: ${state.level}</strong>
+            <strong>Current XP: ${state.xp} / ${state.required}</strong>
+          </div>
         </div>
 
         <div class="summary-stat">
-          <span>Words Read</span>
-          <strong>${session.wordsRead}</strong>
+          <span>Coin Rewards</span>
+          <div class="summary-inline">
+            <strong>Reading: +${state.sessionReadingCoins}</strong>
+            <strong>Level: +${state.sessionLevelCoins}</strong>
+            <strong>Total Coins gained: +${session.coinsGained}</strong>
+          </div>
         </div>
 
         <div class="summary-stat">
-          <span>Time Reading</span>
-          <strong>${formattedTime}</strong>
+        <span>Reading Stats:</span>
+          <div class="summary-inline">
+            <strong>Words Read: ${session.wordsRead}</strong>
+          <strong>Time Reading: ${formattedTime}</strong>
+          </div>
         </div>
 
         <div class="summary-stat">
@@ -804,6 +844,8 @@
           );
           state.level++;
           state.coins += levelReward;
+          state.totalCoinsEarned += levelReward;
+          state.sessionLevelCoins += levelReward;
           state.sessionCoinsGained += levelReward;
           console.log(
             "[LEVEL] Level up! New level:",
@@ -833,7 +875,9 @@
             xp: state.xp,
             required: state.required,
             level: state.level,
-            coins: state.coins
+            coins: state.coins,
+            totalCoinsEarned: state.totalCoinsEarned,
+            totalCoinsSpent: state.totalCoinsSpent
           },
           () => {
             console.log(
@@ -1091,12 +1135,21 @@
           sendResponse({ ok: true });
           return false;
         case "start-reader":
-          chrome.storage.sync.get(["xp", "level", "required", "coins"], (data) => {
+          chrome.storage.sync.get([
+            "xp",
+            "level",
+            "required",
+            "coins",
+            "totalCoinsEarned",
+            "totalCoinsSpent"
+          ], (data) => {
             try {
               if (data.xp !== void 0) state.xp = data.xp;
               if (data.level !== void 0) state.level = data.level;
               if (data.required !== void 0) state.required = data.required;
               if (data.coins !== void 0) state.coins = data.coins;
+              if (data.totalCoinsEarned !== void 0) state.totalCoinsEarned = data.totalCoinsEarned;
+              if (data.totalCoinsSpent !== void 0) state.totalCoinsSpent = data.totalCoinsSpent;
               console.log("[LEVEL] Loaded XP + Level:", state.xp, state.level);
               state.sessionStartedAt = Date.now();
               state.allSentences = [];
@@ -1112,14 +1165,17 @@
               state.levelAtStart = state.level;
               state.sessionXp = 0;
               state.sessionCoinsGained = 0;
+              state.sessionLevelCoins = 0;
+              state.sessionReadingCoins = 0;
               state.percentComplete = 0;
               state.paragraphSwitches = 0;
+              state.sessionStatus = "active";
+              state.sessionStartPercent = msg.resumePercent || 0;
               state.topicId = null;
               state.sessionCategory = "Reading";
               state.sessionNotes = [];
               state.sessionTags = [];
               state.paragraphXpMap.clear();
-              state.sessionStatus = "active";
               state.pausedAt = null;
               state.isPaused = false;
               state.totalPausedMs = 0;
@@ -1134,6 +1190,7 @@
                 wordsReadSoFar: 0,
                 currentPageWords: 0,
                 percentComplete: 0,
+                sessionReadingCoins: 0,
                 pausedAt: null,
                 totalPausedMs: 0,
                 isPaused: false
@@ -1182,6 +1239,9 @@
               state.currentPage = 0;
               if (msg.resumePage !== void 0) {
                 state.currentPage = msg.resumePage;
+              }
+              if (msg.resumePercent !== void 0) {
+                state.percentComplete = msg.resumePercent;
               }
               updateReaderStyle();
               setActiveParagraph();

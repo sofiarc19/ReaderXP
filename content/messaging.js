@@ -20,13 +20,16 @@ export function setupMessaging() {
         return false;
 
       case "start-reader":
-        chrome.storage.sync.get(["xp", "level", "required", "coins"], (data) => {
+        chrome.storage.sync.get(["xp", "level", "required", 
+          "coins", "totalCoinsEarned", "totalCoinsSpent"], (data) => {
           try {
             // Load persistent player progression (these survive across sessions)
             if (data.xp !== undefined) state.xp = data.xp;
             if (data.level !== undefined) state.level = data.level;
             if (data.required !== undefined) state.required = data.required;
             if (data.coins !== undefined) state.coins = data.coins;
+            if (data.totalCoinsEarned !== undefined) state.totalCoinsEarned = data.totalCoinsEarned;
+            if (data.totalCoinsSpent !== undefined) state.totalCoinsSpent = data.totalCoinsSpent;
             console.log("[LEVEL] Loaded XP + Level:", state.xp, state.level);
 
             // Start a NEW reading session
@@ -46,12 +49,22 @@ export function setupMessaging() {
            // XP / Coin tracking
             state.coinsAtStart = state.coins;
             state.levelAtStart = state.level;
-
             state.sessionXp = 0;
+
             state.sessionCoinsGained = 0;
+            state.sessionLevelCoins = 0;
+            state.sessionReadingCoins = 0;
             // Progress tracking
             state.percentComplete = 0;
             state.paragraphSwitches = 0;
+
+            // Session starts active
+            state.sessionStatus = "active";
+
+            // New article starts at 0%
+            // Resumed article starts where it left off
+            state.sessionStartPercent =
+              msg.resumePercent || 0;
             // Topic metadata
             state.topicId = null;
             state.sessionCategory = "Reading";
@@ -60,8 +73,6 @@ export function setupMessaging() {
             state.sessionTags = [];
             // Reset XP awards for paragraphs
             state.paragraphXpMap.clear();
-            // Session starts active
-            state.sessionStatus = "active";
 
             // Pause-related tracking
             state.pausedAt = null;
@@ -81,6 +92,7 @@ export function setupMessaging() {
               wordsReadSoFar: 0,
               currentPageWords: 0,
               percentComplete: 0,
+              sessionReadingCoins: 0,
 
               pausedAt: null,
               totalPausedMs: 0,
@@ -154,6 +166,11 @@ export function setupMessaging() {
             // Apply styling + highlight first paragraph
             if (msg.resumePage !== undefined) {
               state.currentPage = msg.resumePage;
+            }
+
+            if (msg.resumePercent !== undefined) {
+              state.percentComplete =
+                msg.resumePercent;
             }
 
             updateReaderStyle();

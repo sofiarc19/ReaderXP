@@ -203,6 +203,7 @@
 
 .summary-header h1 {
   margin: 0;
+  padding: 0;
   color: var(--text-muted);
   font-size: 22px;
 }
@@ -275,10 +276,10 @@
   background: var(--accent);
   border-color: var(--accent);
 }
-
+/* 
 #summary-save-topic:hover {
   background: var(--accent-hover);
-}
+} */
 
 /* Paused Page */
 #reader-paused {
