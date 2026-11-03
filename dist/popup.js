@@ -89,7 +89,7 @@
     root.classList.remove(
       "theme-dark",
       "theme-light",
-      "theme-forest"
+      "theme-green"
     );
     root.classList.add(themeName);
   }
@@ -182,6 +182,13 @@
     hygiene: 100,
     social: 100,
     energy: 100,
+    activity: null,
+    activityChangedAt: null,
+    currentMood: null,
+    dailyCareUses: 3,
+    lastCareReset: Date.now(),
+    dailyReadingRewards: 0,
+    lastReadingReset: Date.now(),
     lastUpdated: Date.now(),
     //evolutionStage: 1,
     inventory: []
@@ -192,85 +199,130 @@
       frames: 10,
       frameWidth: 96,
       width: 96,
-      height: 100
-      //speed: 250
+      height: 100,
+      row: 0
     },
-    idle2: {
-      sheet: "Idle2.png",
-      frames: 10,
-      frameWidth: 96
-    },
-    content: {
+    box: {
       sheet: "Box1.png",
       frames: 4,
-      frameWidth: 96
+      frameWidth: 96,
+      row: 0
+    },
+    sick1: {
+      sheet: "catsick1.png",
+      frames: 5,
+      frameWidth: 96,
+      row: 0
+    },
+    sick2: {
+      sheet: "catsick2.png",
+      frames: 4,
+      frameWidth: 96,
+      row: 0
     },
     cry: {
       sheet: "Cry.png",
-      frames: 8,
-      frameWidth: 96
+      frames: 4,
+      frameWidth: 96,
+      row: 0
     },
     dance: {
       sheet: "Dance.png",
       frames: 4,
-      frameWidth: 96
+      frameWidth: 96,
+      row: 0
     },
-    starving: {
-      sheet: "catsick1.png",
-      frames: 5,
-      frameWidth: 96
+    dead: {
+      sheet: "DeadCat.png",
+      frames: 1,
+      frameWidth: 96,
+      row: 0
     },
-    mad: {
-      sheet: "catsick2.png",
-      frames: 4,
-      frameWidth: 96
+    eating: {
+      sheet: "Eating.png",
+      frames: 15,
+      frameWidth: 96,
+      row: 0
     },
-    waiting: {
-      sheet: "Waiting.png",
-      frames: 6,
-      frameWidth: 96
+    excited: {
+      sheet: "Excited.png",
+      frames: 1,
+      frameWidth: 96,
+      row: 0
+    },
+    idle2: {
+      sheet: "Idle2.png",
+      frames: 10,
+      frameWidth: 96,
+      row: 0
+    },
+    laydown: {
+      sheet: "laydown.png",
+      frames: 12,
+      frameWidth: 96,
+      row: 0
     },
     sad: {
       sheet: "Sad.png",
       frames: 9,
-      frameWidth: 96
+      frameWidth: 96,
+      row: 0
+    },
+    sleep: {
+      sheet: "Sleep.png",
+      frames: 4,
+      frameWidth: 96,
+      row: 0
     },
     sleepy: {
       sheet: "Sleepy.png",
       frames: 8,
-      frameWidth: 96
-    },
-    superLow: {
-      sheet: "DeadCat.png",
-      frames: 1,
-      frameWidth: 96
+      frameWidth: 96,
+      row: 0
     },
     surprised: {
       sheet: "Surprised.png",
       frames: 12,
-      frameWidth: 96
+      frameWidth: 96,
+      row: 0
+    },
+    waiting: {
+      sheet: "Waiting.png",
+      frames: 6,
+      frameWidth: 96,
+      row: 0
     }
+    //Sprite Sheets:
+    //   angry: {
+    //   sheet: "CatSheet.png",
+    //   frames: 10,
+    //   frameWidth: 96,
+    //   frameHeight: 100,
+    //   row: 0
+    // },
   };
   var animationInterval = null;
-  function loadPet(callback) {
-    chrome.storage.sync.get(
-      ["pet"],
-      (data) => {
-        const pet = data.pet || { ...DEFAULT_PET };
-        updatePetDecay(pet);
-        savePet(pet);
-        callback(pet);
+  function loadPet2(callback) {
+    chrome.storage.sync.get(["pet"], (data) => {
+      const pet = { ...DEFAULT_PET, ...data.pet || {} };
+      if (pet.dailyCareUses === void 0) {
+        pet.dailyCareUses = 3;
       }
-    );
+      if (!pet.lastCareReset) {
+        pet.lastCareReset = Date.now();
+      }
+      resetDailyCare(pet);
+      resetDailyRewards(pet);
+      updatePetDecay(pet);
+      savePet(pet);
+      callback(pet);
+    });
   }
   function savePet(pet) {
     chrome.storage.sync.set({ pet });
   }
   function renderPet(pet) {
-    console.log(
-      "[PET] Rendering:",
-      pet
-    );
+    console.log("[PET] Rendering:", pet);
     chrome.storage.sync.get(
       ["level", "coins", "xp", "required"],
       (data) => {
@@ -281,32 +333,21 @@
         if (stageLevelEl) {
           stageLevelEl.textContent = `Level ${currentLevel}`;
         }
-        const currentLevelEl = document.getElementById(
-          "pet-current-level"
-        );
+        const currentLevelEl = document.getElementById("pet-current-level");
         if (currentLevelEl) {
           currentLevelEl.textContent = `Level ${currentLevel}`;
         }
-        const xpEl = document.getElementById(
-          "pet-current-xp"
-        );
+        const xpEl = document.getElementById("pet-current-xp");
         if (xpEl) {
           xpEl.textContent = `${currentXp} / ${requiredXp} XP`;
         }
-        const levelBar = document.getElementById(
-          "pet-level-bar"
-        );
+        const levelBar = document.getElementById("pet-level-bar");
         if (levelBar) {
-          levelBar.style.width = `${Math.min(
-            100,
-            currentXp / requiredXp * 100
-          )}%`;
+          levelBar.style.width = `${Math.min(100, requiredXp > 0 ? currentXp / requiredXp * 100 : 0)}%`;
         }
-        const coinsEl = document.getElementById(
-          "petCoins"
-        );
-        if (coinsEl) {
-          coinsEl.textContent = data.coins ?? 0;
+        const careInfo = document.getElementById("careInfo");
+        if (careInfo) {
+          careInfo.textContent = `$10 \u2022 ${pet.dailyCareUses}/3 uses`;
         }
       }
     );
@@ -358,70 +399,150 @@
   }
   function getPetMood(pet) {
     if (pet.hunger < 25)
-      return "Starving";
+      return "Sick";
     if (pet.energy < 25)
-      return "Sleepy";
+      return "Tired";
     if (pet.social < 25)
-      return "Waiting";
+      return "Lonely";
     if (pet.hygiene < 25)
-      return "Surprised";
+      return "Uncomfortable";
     if (pet.mood > 80)
-      return "Dance";
+      return "Happy";
     if (pet.mood > 50)
       return "Content";
     return "Sad";
   }
-  function updatePetUI(pet) {
+  function rollPetActivity(pet) {
     const mood = getPetMood(pet);
+    switch (mood) {
+      case "Happy":
+        return pickRandom([
+          "Dancing",
+          "Excited"
+        ]);
+      case "Content":
+        return pickRandom([
+          "Relaxing",
+          "Observing",
+          "Box"
+        ]);
+      case "Tired":
+        return pickRandom([
+          "Yawning",
+          "Sleeping"
+        ]);
+      case "Lonely":
+        return pickRandom([
+          "Waiting",
+          "Looking Around"
+        ]);
+      case "Sad":
+        return pickRandom([
+          "Moping",
+          "Crying"
+        ]);
+      case "Sick":
+        return pickRandom([
+          "Sick",
+          "Uncomfortable"
+        ]);
+      default:
+        return "idle2";
+    }
+  }
+  function updatePetActivity(pet) {
+    const now = Date.now();
+    const mood = getPetMood(pet);
+    const moodChanged = pet.currentMood !== mood;
+    const activityExpired = !pet.activityChangedAt || now - pet.activityChangedAt > 3e5;
+    if (moodChanged || activityExpired || !pet.activity) {
+      pet.activity = rollPetActivity(pet);
+      pet.activityChangedAt = now;
+      pet.currentMood = mood;
+      savePet(pet);
+    }
+  }
+  function updatePetUI(pet) {
+    updatePetActivity(pet);
+    const mood = getPetMood(pet);
+    const activity = pet.activity;
     const moodEl = document.getElementById("petMood");
+    const activityEl = document.getElementById("petActivity");
     if (moodEl) {
       moodEl.textContent = mood;
     }
-    switch (mood) {
-      case "Starving":
-        setPetState("starving");
+    if (activityEl) {
+      activityEl.textContent = activity;
+    }
+    switch (activity) {
+      default:
+        setPetState("idle2");
         break;
-      case "Sleepy":
+      // Happy:
+      case "Dancing":
+        setPetState("dance");
+        break;
+      case "Excited":
+        setPetState("excited");
+        break;
+      // Content: 
+      case "Relaxing":
+        setPetState("laydown");
+        break;
+      case "Observing":
+        setPetState("idle2");
+        break;
+      case "Box":
+        setPetState("box");
+        break;
+      // Tired:
+      case "Yawning":
         setPetState("sleepy");
+        break;
+      case "Sleeping":
+        setPetState("sleep");
+        break;
+      // Lonely:
+      case "Looking Around":
+        setPetState("idle");
         break;
       case "Waiting":
         setPetState("waiting");
         break;
+      // Sad:
+      case "Moping":
+        setPetState("sad");
+        break;
+      case "Crying":
+        setPetState("cry");
+        break;
+      // Sick:
+      case "Sick":
+        setPetState("sick1");
+        break;
+      case "Uncomfortable":
+        setPetState("sick2");
+        break;
+      // Mad:
+      // case "Mad":
+      //   setPetState("angry");
+      //   break;
+      // Other:
+      case "Eating":
+        setPetState("eating");
+        break;
       case "Surprised":
         setPetState("surprised");
         break;
-      case "Dance":
-        setPetState("dance");
-        break;
-      case "Content":
-        setPetState("content");
-        break;
-      case "Sad":
-        setPetState("sad");
+      case "Negelected":
+        setPetState("dead");
         break;
     }
+    console.log("[PET]", "Mood:", mood, "Activity:", activity);
   }
   function setPetState(state2) {
     startPetAnimation(state2);
-  }
-  function updatePetDecay(pet) {
-    const now = Date.now();
-    const hoursPassed = (now - pet.lastUpdated) / (1e3 * 60 * 60);
-    pet.hunger = Math.max(0, pet.hunger - hoursPassed * 2);
-    pet.energy = Math.max(0, pet.energy - hoursPassed * 1);
-    pet.social = Math.max(0, pet.social - hoursPassed * 1);
-    pet.hygiene = Math.max(0, pet.hygiene - hoursPassed * 0.5);
-    if (pet.hunger < 25 || pet.energy < 25 || pet.social < 25 || pet.hygiene < 25) {
-      pet.mood = Math.max(0, pet.mood - 5);
-    }
-    pet.lastUpdated = now;
-  }
-  function careForPet(pet) {
-    pet.hunger = Math.min(100, pet.hunger + 15);
-    pet.hygiene = Math.min(100, pet.hygiene + 10);
-    pet.energy = Math.min(100, pet.energy + 5);
-    pet.social = Math.min(100, pet.social + 10);
-    pet.mood = Math.min(100, pet.mood + 5);
+    console.log("[PET] Animation:", state2);
   }
   function startPetAnimation(animation = "idle") {
     const petSprite = document.getElementById("petSprite");
@@ -432,14 +553,73 @@
       clearInterval(animationInterval);
     }
     petSprite.style.backgroundImage = `url("../popup/assets/cat/${config.sheet}")`;
-    petSprite.style.backgroundPositionX = "0px";
-    let frame = 0;
     petSprite.style.width = `${config.width ?? 96}px`;
     petSprite.style.height = `${config.height ?? 100}px`;
+    let frame = 0;
+    const frameWidth = config.frameWidth ?? 96;
+    const frameHeight = config.frameHeight ?? 100;
+    const row = config.row ?? 0;
+    const startFrame = config.startFrame ?? 0;
     animationInterval = setInterval(() => {
-      petSprite.style.backgroundPositionX = `-${frame * config.frameWidth}px`;
+      const currentFrame = startFrame + frame;
+      const x = currentFrame * frameWidth;
+      const y = row * frameHeight;
+      petSprite.style.backgroundPosition = `-${x}px -${y}px`;
       frame = (frame + 1) % config.frames;
     }, 150);
+  }
+  function updatePetDecay(pet) {
+    const now = Date.now();
+    const hoursPassed = (now - pet.lastUpdated) / (1e3 * 60 * 60);
+    pet.hunger = Math.max(0, pet.hunger - hoursPassed * 2.5);
+    pet.energy = Math.max(0, pet.energy - hoursPassed * 1.5);
+    pet.social = Math.max(0, pet.social - hoursPassed * 1);
+    pet.hygiene = Math.max(0, pet.hygiene - hoursPassed * 0.75);
+    let moodDecay = hoursPassed * 0.5;
+    if (pet.hunger < 25) moodDecay += hoursPassed * 2;
+    if (pet.energy < 25) moodDecay += hoursPassed * 1.5;
+    if (pet.social < 25) moodDecay += hoursPassed * 1;
+    if (pet.hygiene < 25) moodDecay += hoursPassed * 1;
+    pet.mood = Math.max(0, pet.mood - moodDecay);
+    pet.lastUpdated = now;
+  }
+  var CARE_PRICE = 10;
+  function careForPet(pet) {
+    if (pet.dailyCareUses <= 0) {
+      return {
+        success: false,
+        reason: "No daily care uses remaining."
+      };
+    }
+    pet.dailyCareUses--;
+    pet.hunger = Math.min(100, pet.hunger + 10);
+    pet.hygiene = Math.min(100, pet.hygiene + 10);
+    pet.energy = Math.min(100, pet.energy + 10);
+    pet.social = Math.min(100, pet.social + 10);
+    pet.mood = Math.min(100, pet.mood + 3);
+    return {
+      success: true,
+      price: CARE_PRICE
+    };
+  }
+  function resetDailyRewards(pet) {
+    const now = Date.now();
+    const lastReset = new Date(pet.lastReadingReset || now);
+    const today = new Date(now);
+    if (lastReset.toDateString() !== today.toDateString()) {
+      pet.dailyReadingRewards = 0;
+      pet.lastReadingReset = now;
+    }
+  }
+  function resetDailyCare(pet) {
+    const now = Date.now();
+    const lastReset = new Date(pet.lastCareReset || now);
+    const today = new Date(now);
+    const isNewDay = lastReset.toDateString() !== today.toDateString();
+    if (isNewDay) {
+      pet.dailyCareUses = 3;
+      pet.lastCareReset = now;
+    }
   }
   window.inspectSprite = (file, frames) => {
     const img = new Image();
@@ -456,6 +636,9 @@
       });
     };
   };
+  function pickRandom(items) {
+    return items[Math.floor(Math.random() * items.length)];
+  }
 
   // content/summary.js
   function resumeReadingPage() {
@@ -742,6 +925,408 @@
     }
   }
 
+  // popup/shopItems.js
+  var SHOP_ITEMS = {
+    Food: [
+      {
+        id: "catfood",
+        name: "Kibble",
+        price: 8,
+        icon: "assets/food/kibble.png",
+        description: "+6 Hunger",
+        effects: {
+          hunger: 6
+        }
+      },
+      {
+        id: "burger",
+        name: "Burger",
+        price: 15,
+        icon: "assets/food/burger.png",
+        description: "+8 Hunger, +2 Mood",
+        effects: {
+          hunger: 8,
+          mood: 2
+        }
+      },
+      {
+        id: "pizzaSlice",
+        name: "Pizza Slice",
+        price: 15,
+        icon: "assets/food/pizzaSlice.png",
+        description: "+8 Hunger, +2 Mood",
+        effects: {
+          hunger: 8,
+          mood: 2
+        }
+      },
+      {
+        id: "soda",
+        name: "Can of Soda",
+        price: 16,
+        icon: "assets/food/soda.png",
+        description: "+2 Hunger, +8 energy",
+        effects: {
+          hunger: 2,
+          energy: 8
+        }
+      },
+      {
+        id: "sushi",
+        name: "Sushi",
+        price: 25,
+        icon: "assets/food/sushi.png",
+        description: "+15 Hunger, +5 Mood",
+        effects: {
+          hunger: 15,
+          mood: 5
+        }
+      },
+      {
+        id: "magicPotion3",
+        name: "Green Magic Potion",
+        price: 99,
+        icon: "assets/items/magicPotion3.png",
+        description: "+75 hunger",
+        effects: {
+          hunger: 75
+        }
+      }
+    ],
+    Toys: [
+      {
+        id: "pinkBall",
+        name: "Pink ball",
+        price: 8,
+        icon: "assets/items/pinkBall.png",
+        description: "+1 Social, +3 mood",
+        effects: {
+          mood: 3,
+          social: 1
+        }
+      },
+      {
+        id: "stick",
+        name: "Stick",
+        price: 15,
+        icon: "assets/items/stick.png",
+        description: "+10 Social, +4 mood",
+        effects: {
+          mood: 4,
+          social: 10
+        }
+      },
+      {
+        id: "mouse",
+        name: "Toy Mouse",
+        price: 25,
+        icon: "assets/items/mouse.png",
+        description: "+18 Social, +6 mood",
+        effects: {
+          mood: 6,
+          social: 18
+        }
+      },
+      {
+        id: "tower",
+        name: "Tower",
+        price: 42,
+        icon: "assets/items/tower.png",
+        description: "+22 Social, +5 mood",
+        effects: {
+          mood: 5,
+          social: 22
+        }
+      },
+      {
+        id: "magicPotion2",
+        name: "Pink Magic Potion",
+        price: 99,
+        icon: "assets/items/magicPotion2.png",
+        description: "+50 Social, +50 mood",
+        effects: {
+          mood: 50,
+          social: 50
+        }
+      }
+    ],
+    Hygiene: [
+      {
+        id: "soap",
+        name: "Soap",
+        price: 6,
+        icon: "assets/items/soap.png",
+        description: "+5 Hygiene",
+        effects: {
+          hygiene: 5
+        }
+      },
+      {
+        id: "toothBrush",
+        name: "Tooth Brush",
+        price: 15,
+        icon: "assets/items/toothBrush.png",
+        description: "+12 Hygiene",
+        effects: {
+          hygiene: 12
+        }
+      },
+      {
+        id: "bed",
+        name: "Basic Bed",
+        price: 20,
+        icon: "assets/items/CatBedBlue.png",
+        description: "+15 Energy",
+        effects: {
+          energy: 15
+        }
+      },
+      {
+        id: "magicPotion1",
+        name: "Blue Magic Potion",
+        price: 99,
+        icon: "assets/items/magicPotion1.png",
+        description: "+50 Hygiene, +50 Energy",
+        effects: {
+          hygiene: 50,
+          energy: 50
+        }
+      }
+    ],
+    Accessories: [],
+    Decor: []
+  };
+
+  // popup/shop.js
+  function buyItem(pet, state2, item, quantity = 1) {
+    pet.inventory ??= [];
+    const totalCost = item.price * quantity;
+    if (state2.coins < totalCost) {
+      return false;
+    }
+    state2.coins -= totalCost;
+    state2.totalCoinsSpent += totalCost;
+    const existing = pet.inventory.find(
+      (i) => i.id === item.id
+    );
+    if (existing) {
+      existing.quantity += quantity;
+    } else {
+      pet.inventory.push({
+        id: item.id,
+        name: item.name,
+        icon: item.icon,
+        description: item.description,
+        price: item.price,
+        effects: item.effects,
+        quantity
+      });
+    }
+    return true;
+  }
+  function renderShopCategory(category, pet, state2) {
+    console.log("[SHOP] Category:", category);
+    const shopGrid = document.getElementById("shopGrid");
+    if (!shopGrid) return;
+    console.log("[SHOP] Grid:", shopGrid);
+    if (category === "Accessories") {
+      shopGrid.innerHTML = `
+      <div class="shop-coming-soon">
+        <strong>Accessories Coming Soon</strong>
+      </div>`;
+      return;
+    }
+    if (category === "Decor") {
+      shopGrid.innerHTML = `
+      <div class="shop-coming-soon">
+        <strong>Room + Decor Coming Soon</strong>
+      </div>`;
+      return;
+    }
+    const items = SHOP_ITEMS[category] || [];
+    console.log("[SHOP] Items:", items);
+    shopGrid.innerHTML = items.map((item) => `
+    <button class="shop-item" data-item="${item.id}">
+      <span class="shop-item-icon">
+        <img src="${item.icon}" alt="${item.name}">
+      </span>
+      <div>
+        <strong>${item.name}</strong>
+        <small>${item.description}</small>
+      </div>
+
+      <small><i>$</i>${item.price}</small>
+    </button>
+  `).join("");
+    shopGrid.querySelectorAll(".shop-item").forEach((button) => {
+      button.addEventListener("click", () => {
+        const itemId = button.dataset.item;
+        const item = items.find((i) => i.id === itemId);
+        if (!item) return;
+        const details = document.getElementById("shopDetails");
+        if (!details) return;
+        details.classList.remove("hidden");
+        details.innerHTML = `
+          <div class="shop-details-header">
+            <img src="${item.icon}" alt="${item.name}">
+            <h4>${item.name}</h4>
+          </div>
+
+          <p>${item.description}</p>
+          <p>Price: $${item.price}</p>
+
+          <div class="shop-buy-actions">
+            <button id="buyOne">
+              Buy 1
+            </button>
+
+            <button id="buyFive">
+              Buy 5
+            </button>
+          </div>`;
+        document.getElementById("buyOne")?.addEventListener(
+          "click",
+          () => {
+            purchaseItem(item, 1, state2);
+          }
+        );
+        document.getElementById("buyFive")?.addEventListener(
+          "click",
+          () => {
+            purchaseItem(item, 5, state2);
+          }
+        );
+      });
+    });
+  }
+  function showShopMessage(text) {
+    const msg = document.getElementById("shopMessage");
+    document.getElementById("shopMessage")?.classList.remove("hidden");
+    if (!msg) return;
+    msg.textContent = text;
+    setTimeout(() => {
+      if (msg.textContent === text) {
+        msg.textContent = "";
+        document.getElementById("shopMessage")?.classList.add("hidden");
+      }
+    }, 3e3);
+  }
+  function purchaseItem(item, quantity, state2) {
+    loadPet((pet) => {
+      const success = buyItem(pet, state2, item, quantity);
+      if (!success) {
+        showShopMessage("Not enough coins!");
+        return;
+      }
+      savePet(pet);
+      chrome.storage.sync.set({
+        coins: state2.coins,
+        totalCoinsSpent: state2.totalCoinsSpent
+      });
+      updateCoinsUI(state2);
+      renderInventory(pet);
+      showShopMessage(`Purchased ${quantity} ${item.name}!`);
+    });
+  }
+  function updateCoinsUI(state2) {
+    const petCoins = document.getElementById("petCoins");
+    const shopCoins = document.getElementById("shopCoins");
+    if (petCoins) {
+      petCoins.textContent = state2.coins;
+    }
+    if (shopCoins) {
+      shopCoins.textContent = state2.coins;
+    }
+  }
+  function renderInventory(pet) {
+    const container = document.getElementById("inventoryList");
+    const details = document.getElementById("inventoryDetails");
+    if (!container) return;
+    if (!pet.inventory || pet.inventory.length === 0) {
+      container.innerHTML = "No items owned yet.";
+      if (details) {
+        details.innerHTML = "Select an item.";
+      }
+      return;
+    }
+    container.innerHTML = pet.inventory.map((item) => `
+    <button class="inventory-item" data-item="${item.id}">
+      <span>
+        <img class="inventory-icon" src="${item.icon}" alt="${item.name}">
+        ${item.name}
+      </span>
+      <span>x${item.quantity}</span>
+    </button>
+  `).join("");
+    container.querySelectorAll(".inventory-item").forEach((button) => {
+      button.addEventListener("click", () => {
+        const itemId = button.dataset.item;
+        const item = pet.inventory.find(
+          (i) => i.id === itemId
+        );
+        if (!item || !details) {
+          return;
+        }
+        details.innerHTML = `
+            <h4>
+              <span>
+                <img class="inventory-icon" src="${item.icon}" alt="${item.name}">
+                ${item.name}
+              </span>
+            </h4>
+            <p>${item.description}</p>
+            <p>Owned: ${item.quantity}</p>
+            <button id="useItem">
+              Use Item
+            </button>`;
+        document.getElementById("useItem")?.addEventListener("click", () => {
+          const success = useInventoryItem(pet, item.id);
+          if (!success) {
+            return;
+          }
+          renderInventory(pet);
+          renderPet(pet);
+          details.innerHTML = "<p>Item used!</p>";
+        });
+      });
+    });
+  }
+  function useInventoryItem(pet, itemId) {
+    pet.inventory ??= [];
+    const item = pet.inventory.find((i) => i.id === itemId);
+    if (!item) {
+      return false;
+    }
+    Object.entries(item.effects || {}).forEach(
+      ([stat, amount]) => {
+        if (typeof pet[stat] === "number") {
+          pet[stat] = Math.min(100, pet[stat] + amount);
+        }
+      }
+    );
+    item.quantity--;
+    if (item.quantity <= 0) {
+      pet.inventory = pet.inventory.filter((i) => i.id !== itemId);
+    }
+    savePet(pet);
+    return true;
+  }
+  function spendCoins(amount, callback) {
+    chrome.storage.sync.get(["coins"], (state2) => {
+      state2.coins ??= 0;
+      if (state2.coins < amount) {
+        callback(false);
+        return;
+      }
+      state2.coins -= amount;
+      chrome.storage.sync.set({
+        coins: state2.coins
+      }, () => {
+        callback(true, state2);
+      });
+    });
+  }
+
   // popup/popupSession.js
   function initSessions() {
     document.getElementById("refreshHistory")?.addEventListener("click", () => {
@@ -777,7 +1362,7 @@
     history.forEach((session, index) => {
       const btn = document.createElement("button");
       const count = session.sessionCount ?? 1;
-      const xp = session.totalXp ?? session.xpGained ?? 0;
+      const xp = session.xpGained ?? 0;
       btn.className = "sessions-item";
       btn.innerHTML = `
         <span class="sessions-dot sessions-${index % 5}"></span>
@@ -789,7 +1374,7 @@
             </small>
         </span>
 
-        <b>${xp} XP</b>
+        <b>${xp} XP</b> 
 
         <span>\u203A</span>
         `;
@@ -864,26 +1449,59 @@
   }
   function initPetUI() {
     $("#carePet")?.addEventListener("click", () => {
-      loadPet((pet) => {
-        careForPet(pet);
-        updatePetUI(pet);
-        renderPet(pet);
+      console.log("[PET] Care button clicked");
+      loadPet2((pet) => {
+        const result = careForPet(pet);
+        if (!result.success) {
+          alert(result.reason);
+          return;
+        }
+        spendCoins(result.price, (success, state2) => {
+          if (!success) {
+            alert("Not enough coins.");
+            return;
+          }
+          savePet(pet);
+          updatePetUI(pet);
+          renderPet(pet);
+          updateCoinsUI(state2);
+        });
+      });
+    });
+    $("#openInventory")?.addEventListener("click", () => {
+      loadPet2((pet) => {
+        renderInventory(pet);
+        document.getElementById("inventoryPanel")?.classList.toggle("hidden");
       });
     });
   }
   function initShopUI() {
-    $$(".shop-categories button").forEach(
-      (btn) => {
-        btn.addEventListener("click", () => {
-          $$(".shop-categories button").forEach(
-            (b) => b.classList.remove("active")
-          );
-          btn.classList.add("active");
-          const category = btn.dataset.shop.toLowerCase();
-          $("#shopCategoryLabel").textContent = `Showing ${category} items`;
-        });
-      }
-    );
+    loadPet2((pet) => {
+      chrome.storage.sync.get(
+        ["coins", "totalCoinsSpent"],
+        (state2) => {
+          state2.coins ??= 0;
+          state2.totalCoinsSpent ??= 0;
+          renderShopCategory("Food", pet, state2);
+          $$(".shop-categories button").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              $$(".shop-categories button").forEach((b) => b.classList.remove("active"));
+              btn.classList.add("active");
+              const category = btn.dataset.shop;
+              chrome.storage.sync.get(
+                ["coins", "totalCoinsSpent"],
+                (freshState) => {
+                  freshState.coins ??= 0;
+                  freshState.totalCoinsSpent ??= 0;
+                  renderShopCategory(category, pet, freshState);
+                  $("#shopCategoryLabel").textContent = `Showing ${category.toLowerCase()} items`;
+                }
+              );
+            });
+          });
+        }
+      );
+    });
   }
   document.addEventListener("DOMContentLoaded", async () => {
     await loadCurrentArticleTitle();
@@ -897,13 +1515,15 @@
     setInterval(() => {
       updateReaderPopupStats();
     }, 1e3);
-    loadPet((pet) => {
-      console.log(
-        "[PET] Rendering:",
-        pet
-      );
+    loadPet2((pet) => {
+      console.log("[PET] Rendering:", pet);
       updatePetUI(pet);
       renderPet(pet);
+      renderInventory(pet);
+    });
+    chrome.storage.sync.get(["coins"], (state2) => {
+      state2.coins ??= 0;
+      updateCoinsUI(state2);
     });
   });
 })();

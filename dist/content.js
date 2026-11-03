@@ -454,20 +454,32 @@
     hygiene: 100,
     social: 100,
     energy: 100,
+    activity: null,
+    activityChangedAt: null,
+    currentMood: null,
+    dailyCareUses: 3,
+    lastCareReset: Date.now(),
+    dailyReadingRewards: 0,
+    lastReadingReset: Date.now(),
     lastUpdated: Date.now(),
     //evolutionStage: 1,
     inventory: []
   };
   function loadPet(callback) {
-    chrome.storage.sync.get(
-      ["pet"],
-      (data) => {
-        const pet = data.pet || { ...DEFAULT_PET };
-        updatePetDecay(pet);
-        savePet(pet);
-        callback(pet);
+    chrome.storage.sync.get(["pet"], (data) => {
+      const pet = { ...DEFAULT_PET, ...data.pet || {} };
+      if (pet.dailyCareUses === void 0) {
+        pet.dailyCareUses = 3;
       }
-    );
+      if (!pet.lastCareReset) {
+        pet.lastCareReset = Date.now();
+      }
+      resetDailyCare(pet);
+      resetDailyRewards(pet);
+      updatePetDecay(pet);
+      savePet(pet);
+      callback(pet);
+    });
   }
   function savePet(pet) {
     chrome.storage.sync.set({ pet });
@@ -475,28 +487,46 @@
   function updatePetDecay(pet) {
     const now = Date.now();
     const hoursPassed = (now - pet.lastUpdated) / (1e3 * 60 * 60);
-    pet.hunger = Math.max(0, pet.hunger - hoursPassed * 2);
-    pet.energy = Math.max(0, pet.energy - hoursPassed * 1);
+    pet.hunger = Math.max(0, pet.hunger - hoursPassed * 2.5);
+    pet.energy = Math.max(0, pet.energy - hoursPassed * 1.5);
     pet.social = Math.max(0, pet.social - hoursPassed * 1);
-    pet.hygiene = Math.max(0, pet.hygiene - hoursPassed * 0.5);
-    if (pet.hunger < 25 || pet.energy < 25 || pet.social < 25 || pet.hygiene < 25) {
-      pet.mood = Math.max(0, pet.mood - 5);
-    }
+    pet.hygiene = Math.max(0, pet.hygiene - hoursPassed * 0.75);
+    let moodDecay = hoursPassed * 0.5;
+    if (pet.hunger < 25) moodDecay += hoursPassed * 2;
+    if (pet.energy < 25) moodDecay += hoursPassed * 1.5;
+    if (pet.social < 25) moodDecay += hoursPassed * 1;
+    if (pet.hygiene < 25) moodDecay += hoursPassed * 1;
+    pet.mood = Math.max(0, pet.mood - moodDecay);
     pet.lastUpdated = now;
   }
-  function rewardPetForReading(pet, session) {
-    pet.mood = Math.min(
-      100,
-      pet.mood + Math.ceil(session.xpGained / 10)
-    );
-    pet.social = Math.min(
-      100,
-      pet.social + 5
-    );
-    pet.energy = Math.min(
-      100,
-      pet.energy + 3
-    );
+  var MAX_DAILY_READING_REWARDS = 10;
+  function rewardPetForReading(pet) {
+    if (pet.dailyReadingRewards >= MAX_DAILY_READING_REWARDS) {
+      return false;
+    }
+    pet.mood = Math.min(100, pet.mood + 1);
+    pet.social = Math.min(100, pet.social + 1);
+    pet.dailyReadingRewards++;
+    return true;
+  }
+  function resetDailyRewards(pet) {
+    const now = Date.now();
+    const lastReset = new Date(pet.lastReadingReset || now);
+    const today = new Date(now);
+    if (lastReset.toDateString() !== today.toDateString()) {
+      pet.dailyReadingRewards = 0;
+      pet.lastReadingReset = now;
+    }
+  }
+  function resetDailyCare(pet) {
+    const now = Date.now();
+    const lastReset = new Date(pet.lastCareReset || now);
+    const today = new Date(now);
+    const isNewDay = lastReset.toDateString() !== today.toDateString();
+    if (isNewDay) {
+      pet.dailyCareUses = 3;
+      pet.lastCareReset = now;
+    }
   }
   function getMoodCoinMultiplier(pet) {
     if (pet.mood >= 80) {
@@ -644,8 +674,8 @@
           <span>Session Stats</span>
 
           <div class="summary-inline">
-            <strong>+${session.xpGained} XP</strong>
-            <strong>Level: ${state.level}</strong>
+            <strong>+${session.xpGained} XP |</strong>
+            <strong>Level: ${state.level} |</strong>
             <strong>Current XP: ${state.xp} / ${state.required}</strong>
           </div>
         </div>
@@ -653,8 +683,8 @@
         <div class="summary-stat">
           <span>Coin Rewards</span>
           <div class="summary-inline">
-            <strong>Reading: +${state.sessionReadingCoins}</strong>
-            <strong>Level: +${state.sessionLevelCoins}</strong>
+            <strong>Reading: ${state.sessionReadingCoins} +</strong>
+            <strong>Level: ${state.sessionLevelCoins} =</strong>
             <strong>Total Coins gained: +${session.coinsGained}</strong>
           </div>
         </div>
@@ -662,7 +692,7 @@
         <div class="summary-stat">
         <span>Reading Stats:</span>
           <div class="summary-inline">
-            <strong>Words Read: ${session.wordsRead}</strong>
+            <strong>Words Read: ${session.wordsRead} |</strong>
           <strong>Time Reading: ${formattedTime}</strong>
           </div>
         </div>
@@ -999,6 +1029,14 @@
     ).join(" ");
     readerActive.innerHTML = html;
   }
+  function rerenderReader() {
+    console.log(
+      "[RERENDER]",
+      state.currentChunk
+    );
+    if (!state.currentChunk) return;
+    renderChunk(state.currentChunk);
+  }
   function transformNormal(word) {
     return word;
   }
@@ -1123,6 +1161,7 @@
       el.classList.remove("theme-dark", "theme-light", "theme-forest");
       el.classList.add(state.readerSettings.theme);
     });
+    rerenderReader();
   }
 
   // content/messaging.js

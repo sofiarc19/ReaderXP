@@ -62,7 +62,7 @@ function renderSessionList(history) {
     history.forEach((session, index) => {
         const btn = document.createElement("button");
         const count = session.sessionCount ?? 1;
-        const xp = session.totalXp ?? session.xpGained ?? 0;
+        const xp = session.xpGained ?? 0;
 
         btn.className = "sessions-item";
 
@@ -76,10 +76,10 @@ function renderSessionList(history) {
             </small>
         </span>
 
-        <b>${xp} XP</b>
+        <b>${xp} XP</b> 
 
         <span>›</span>
-        `;
+        `; //XP needs to be updated cause its currently not correct 
 
         btn.addEventListener("click", () => {
         showSessionSummary(session);

@@ -77,7 +77,7 @@
                     <select id="color-theme">
                     <option value="theme-dark">Dark</option>
                     <option value="theme-light">Light</option>
-                    <option value="theme-forest">Forest</option>
+                    <option value="theme-green">Green</option>
                     </select>
                 </label>
 
@@ -185,32 +185,37 @@
         <div class="pet-title">
           <div>
             <strong>Pet</strong>
-            <div id="petThought" class="pet-thought hidden">
+            <!-- <div id="petThought" class="pet-thought hidden">
               💭 Hungry
+            </div> -->
             </div>
-          </div>
-          <span class="petStatus" id="petMood">Current Mood</span>
-        </div>
-        <div class="coin-wrapper">
-          <span class="coin-count">
-            <i>$</i>
-            <span id="petCoins">0</span>
-            <!-- <span class="coin-info">
-              ?
-            </span> -->
+              <span class="petStatus" id="petMood">Main Mood</span>
+              <span class="petActivity" id="petActivity">Activity</span>
+              <span class="petBonus" id="petBonus">
+                Bonuses Active
+                <span class="bonus-info">?</span>
 
-            <div class="coin-tooltip hidden">
-              Coins are earned by:
-              - Reading progress
-              - Finishing articles
-              - Leveling up
+                <div id="bonusTooltip"
+                  class="bonus-tooltip">
+                </div>
+              </span>
             </div>
-          </span>
+            <div class="coin-wrapper">
+            <span class="coin-count">
+              <i>$</i>
+              <span id="petCoins">0</span>
+              <div class="coin-tooltip">
+                Coins are earned by:
+                <br>• Reading progress
+                <br>• Finishing articles
+                <br>• Leveling up
+              </div>
+            </span>
+          </div>
         </div>
-      </div>
 
       <div class="pet-stage">
-        <span class="pet-level">Level ?</span>
+        <span class="pet-level">Level </span>
         <div class="pet-display">
           <div class="pet-room">
             <div id="petSprite" class="pet-sprite"></div>
@@ -257,8 +262,22 @@
       </div>
 
       <div class="pet-actions">
-        <button id="carePet">Care for Pet</button>
-        <button data-tab-switch="shop">Go to shop</button>
+        <button id="carePet">
+          Care for Pet
+          <small id="careInfo">
+            $10 • 3/3 uses
+          </small>
+        </button>
+        <button id="openInventory">Inventory</button>
+      </div>
+      <div id="inventoryPanel" class="inventory-panel hidden">
+        <div class="inventory-header">
+          <strong>Inventory</strong>
+        </div>
+        <div id="inventoryList">
+          No items owned yet. Head to the shop to purchase items!
+        </div>
+       <div id="inventoryDetails">Select an item</div>
       </div>
     </div>
 
@@ -267,29 +286,34 @@
       <div class="shop-heading">
         <div>
           <strong>Pet Suppply Shop</strong>
-          <span>Pick up something for your buddy</span>
+          <!-- <span>Pick up something for your buddy</span> -->
         </div>
         <span class="coin-count">
           <i>$</i>
           <span id="shopCoins">0</span>
+          <div class="coin-tooltip">
+              Coins are earned by:
+              <br>• Reading progress
+              <br>• Finishing articles
+              <br>• Leveling up
+          </div>
         </span>
       </div>
 
       <div class="shop-categories">
         <button class="active" data-shop="Food">Food</button>
         <button data-shop="Toys">Toys</button>
-        <button data-shop="Hygiene">Hygiene</button>
+        <button data-shop="Hygiene">Pet Care</button>
         <button data-shop="Accessories">Accessories</button>
+        <button data-shop="Decor">Room Decor</button>
       </div>
 
-      <div class="shop-grid">
-        <button class="shop-item"><span>T</span><strong>Daily treat</strong><small><i>$</i>25</small></button>
-        <button class="shop-item"><span>P</span><strong>Premium pick</strong><small><i>$</i>60</small></button>
-        <button class="shop-item"><span>C</span><strong>Cozy favorite</strong><small><i>$</i>90</small></button>
-        <button class="shop-item"><span>?</span><strong>Surprise box</strong><small><i>$</i>120</small></button>
+      <div id="shopGrid" class="shop-grid"></div>
+      <div id="shopDetails" class="shop-details hidden">
+        Select an item to view details.
       </div>
-
-      <p id="shopCategoryLabel">Showing food items</p>
+      <div id="shopMessage" class="hidden"></div>
+      <!-- <p id="shopCategoryLabel">Showing food items</p> -->
     </div>
   </section>
   <script src="/dist/popup.js"></script>

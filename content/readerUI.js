@@ -26,6 +26,10 @@ export function renderChunk(chunk) {
 
 // Re-render the current chunk (used when settings change)
 export function rerenderReader() {
+  console.log(
+    "[RERENDER]",
+    state.currentChunk
+  );
   if (!state.currentChunk) return;
   renderChunk(state.currentChunk);
 }
@@ -209,4 +213,6 @@ export function updateReaderStyle() {
     el.classList.remove("theme-dark", "theme-light", "theme-forest");
     el.classList.add(state.readerSettings.theme);
   });
+
+  rerenderReader();
 }

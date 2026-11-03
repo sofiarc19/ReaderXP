@@ -1,5 +1,6 @@
 import { initReader, updateReaderPopupStats, updateLifeTimeStats, validateReaderState } from "./popupReader";
 import {loadPet, renderPet, savePet, careForPet, updatePetUI } from "./pet";
+import { renderShopCategory, renderInventory, updateCoinsUI, spendCoins} from "./shop";
 import { initSessions } from "./popupSession";
 import { api, $, $$ } from "./popupUtils";
 
@@ -26,36 +27,77 @@ async function loadCurrentArticleTitle() {
   }
 }
 
-function initPetUI(){
-  // Pet Panel
+function initPetUI() {
   $("#carePet")?.addEventListener("click", () => {
+    console.log("[PET] Care button clicked");
+      loadPet((pet) => {
+        const result = careForPet(pet);
 
-    loadPet((pet) => {
-      careForPet(pet);
-      updatePetUI(pet);
-      renderPet(pet);
+        if (!result.success) {
+          alert(result.reason);
+          return;
+        }
+
+        // Spend the coins required for Care For Pet
+        spendCoins(result.price, (success, state) => {
+          if (!success) {
+            alert("Not enough coins.");
+            return;
+          }
+
+          savePet(pet);
+          updatePetUI(pet);
+          renderPet(pet);
+          updateCoinsUI(state);
+        });
+      });
+    });  
+   
+
+    $("#openInventory")?.addEventListener("click", () => {
+      loadPet((pet) => {
+        renderInventory(pet);
+
+        document.getElementById("inventoryPanel")
+          ?.classList.toggle("hidden");
     });
   });
 }
 
-function initShopUI(){
-  // Shop
-  $$(".shop-categories button").forEach(
-    
-    (btn) => {
-      btn.addEventListener("click", () => {
-        $$(".shop-categories button")
-          .forEach((b) =>
-            b.classList.remove("active")
-        );
-      
-        btn.classList.add("active");
-        const category = btn.dataset.shop.toLowerCase();
-        
-        $("#shopCategoryLabel").textContent =`Showing ${category} items`;
-      });
-    }
-  );
+function initShopUI() {
+  loadPet((pet) => {
+
+    chrome.storage.sync.get(
+      ["coins", "totalCoinsSpent"], (state) => {
+
+        state.coins ??= 0;
+        state.totalCoinsSpent ??= 0;
+
+        // Initial shop render
+        renderShopCategory("Food", pet, state);
+
+        $$(".shop-categories button").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            // Update active button
+            $$(".shop-categories button").forEach((b) =>
+              b.classList.remove("active"));
+              btn.classList.add("active");
+
+              const category = btn.dataset.shop;
+              // Refresh state so coin count is always current
+              chrome.storage.sync.get(["coins", "totalCoinsSpent"],
+                (freshState) => {
+                  freshState.coins ??= 0;
+                  freshState.totalCoinsSpent ??= 0;
+
+                  renderShopCategory(category, pet, freshState);
+                  $("#shopCategoryLabel").textContent =
+                    `Showing ${category.toLowerCase()} items`;
+              });
+          });
+        });
+    });
+  });
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -78,11 +120,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Pet
   loadPet((pet) => {
-    console.log(
-    "[PET] Rendering:",
-    pet
-  );
+    console.log("[PET] Rendering:", pet);
     updatePetUI(pet);
     renderPet(pet);
+    renderInventory(pet);
+  });
+  chrome.storage.sync.get(["coins"],(state) => {
+    state.coins ??= 0;
+    updateCoinsUI(state);
   });
 });

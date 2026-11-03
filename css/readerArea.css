@@ -5,6 +5,10 @@
   box-sizing: border-box;
 }
 
+.bionic-first {
+  font-weight: bold;
+}
+
 #reader-area-bar {
   display: block;
 }
@@ -244,6 +248,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-top: 2px;
 }
 
 .summary-actions button,
@@ -430,7 +435,7 @@
     --progress-fill: #606ad7;
 }
 
-.theme-forest {
+.theme-green {
     --bg: #15211a;
 
     --surface: #203026;

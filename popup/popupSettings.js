@@ -19,7 +19,7 @@ export function applyPopupTheme(themeName) {
   root.classList.remove(
     "theme-dark",
     "theme-light",
-    "theme-forest"
+    "theme-green"
   );
   root.classList.add(themeName);
 }

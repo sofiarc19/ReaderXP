@@ -134,8 +134,8 @@ export function showSummaryPage() {
           <span>Session Stats</span>
 
           <div class="summary-inline">
-            <strong>+${session.xpGained} XP</strong>
-            <strong>Level: ${state.level}</strong>
+            <strong>+${session.xpGained} XP |</strong>
+            <strong>Level: ${state.level} |</strong>
             <strong>Current XP: ${state.xp} / ${state.required}</strong>
           </div>
         </div>
@@ -143,8 +143,8 @@ export function showSummaryPage() {
         <div class="summary-stat">
           <span>Coin Rewards</span>
           <div class="summary-inline">
-            <strong>Reading: +${state.sessionReadingCoins}</strong>
-            <strong>Level: +${state.sessionLevelCoins}</strong>
+            <strong>Reading: ${state.sessionReadingCoins} +</strong>
+            <strong>Level: ${state.sessionLevelCoins} =</strong>
             <strong>Total Coins gained: +${session.coinsGained}</strong>
           </div>
         </div>
@@ -152,7 +152,7 @@ export function showSummaryPage() {
         <div class="summary-stat">
         <span>Reading Stats:</span>
           <div class="summary-inline">
-            <strong>Words Read: ${session.wordsRead}</strong>
+            <strong>Words Read: ${session.wordsRead} |</strong>
           <strong>Time Reading: ${formattedTime}</strong>
           </div>
         </div>

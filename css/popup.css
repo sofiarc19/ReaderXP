@@ -120,7 +120,8 @@ body {
 .mini-progress {
   width: 100%;
   height: 6px;
-  background: var(--surface);
+  /* background: var(--surface); */
+  background: var(--border);
   border-radius: 4px;
   margin-bottom: 1vh;
   overflow: hidden;
@@ -456,7 +457,7 @@ body {
     --progress-fill: #606ad7;
 }
 
-.theme-forest {
+.theme-green {
     --bg: #15211a;
 
     --surface: #203026;
