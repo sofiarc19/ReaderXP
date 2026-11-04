@@ -52,8 +52,7 @@ export const state = {
   required: 0,
 
   // Coin system
-
-  coins: 0,                  // current balance
+  coins: 15,                  // current balance + start with 15
 
   totalCoinsEarned: 0,       // lifetime earned
   totalCoinsSpent: 0,        // lifetime spent

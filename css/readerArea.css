@@ -6,7 +6,8 @@
 }
 
 .bionic-first {
-  font-weight: bold;
+  font-weight: 700 !important;
+  color: var(--text) !important;
 }
 
 #reader-area-bar {

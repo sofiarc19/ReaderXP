@@ -1,4 +1,4 @@
-import { savePet, renderPet } from "./pet";
+import { savePet, renderPet, loadPet } from "./pet";
 import { SHOP_ITEMS } from "./shopItems";
 
 export function buyItem(pet, state, item, quantity = 1) {
@@ -11,6 +11,7 @@ export function buyItem(pet, state, item, quantity = 1) {
   }
 
   state.coins -= totalCost;
+  state.totalCoinsSpent ??= 0;
   state.totalCoinsSpent += totalCost;
 
   const existing = pet.inventory.find(
@@ -18,6 +19,7 @@ export function buyItem(pet, state, item, quantity = 1) {
   );
 
   if (existing) {
+    existing.quantity ??= 0;
     existing.quantity += quantity;
   } else {
     pet.inventory.push({
@@ -138,7 +140,7 @@ function showShopMessage(text) {
   }, 3000);
 }
 
-function purchaseItem(item, quantity,state) {
+function purchaseItem(item, quantity, state) {
 
   loadPet((pet) => {
     const success =
@@ -188,7 +190,8 @@ export function renderInventory(pet) {
   if (!container) return;
 
   if (!pet.inventory || pet.inventory.length === 0) {
-    container.innerHTML = "No items owned yet.";
+    container.innerHTML = 
+      "No items owned.";
 
     if (details) {
       details.innerHTML ="Select an item.";

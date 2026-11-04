@@ -139,8 +139,8 @@
     xp: 0,
     required: 0,
     // Coin system
-    coins: 0,
-    // current balance
+    coins: 15,
+    // current balance + start with 15
     totalCoinsEarned: 0,
     // lifetime earned
     totalCoinsSpent: 0,
@@ -174,25 +174,7 @@
     });
   }
 
-  // popup/pet.js
-  var DEFAULT_PET = {
-    name: "Pet name",
-    hunger: 100,
-    mood: 100,
-    hygiene: 100,
-    social: 100,
-    energy: 100,
-    activity: null,
-    activityChangedAt: null,
-    currentMood: null,
-    dailyCareUses: 3,
-    lastCareReset: Date.now(),
-    dailyReadingRewards: 0,
-    lastReadingReset: Date.now(),
-    lastUpdated: Date.now(),
-    //evolutionStage: 1,
-    inventory: []
-  };
+  // popup/petAnimations.js
   var PET_ANIMATIONS = {
     idle: {
       sheet: "Idle.png",
@@ -301,8 +283,28 @@
     //   row: 0
     // },
   };
+
+  // popup/pet.js
+  var DEFAULT_PET = {
+    name: "Pet name",
+    hunger: 100,
+    mood: 100,
+    hygiene: 100,
+    social: 100,
+    energy: 100,
+    activity: null,
+    activityChangedAt: null,
+    currentMood: null,
+    dailyCareUses: 3,
+    lastCareReset: Date.now(),
+    dailyReadingRewards: 0,
+    lastReadingReset: Date.now(),
+    lastUpdated: Date.now(),
+    //evolutionStage: 1,
+    inventory: []
+  };
   var animationInterval = null;
-  function loadPet2(callback) {
+  function loadPet(callback) {
     chrome.storage.sync.get(["pet"], (data) => {
       const pet = { ...DEFAULT_PET, ...data.pet || {} };
       if (pet.dailyCareUses === void 0) {
@@ -1105,11 +1107,13 @@
       return false;
     }
     state2.coins -= totalCost;
+    state2.totalCoinsSpent ??= 0;
     state2.totalCoinsSpent += totalCost;
     const existing = pet.inventory.find(
       (i) => i.id === item.id
     );
     if (existing) {
+      existing.quantity ??= 0;
       existing.quantity += quantity;
     } else {
       pet.inventory.push({
@@ -1243,7 +1247,7 @@
     const details = document.getElementById("inventoryDetails");
     if (!container) return;
     if (!pet.inventory || pet.inventory.length === 0) {
-      container.innerHTML = "No items owned yet.";
+      container.innerHTML = "No items owned.";
       if (details) {
         details.innerHTML = "Select an item.";
       }
@@ -1335,6 +1339,14 @@
         renderSessionList(history);
       });
     });
+    document.getElementById("openSessionArticle")?.addEventListener("click", async () => {
+      const url = document.getElementById("openSessionArticle")?.dataset.url;
+      if (!url) return;
+      const tab = await getActiveTab();
+      if (tab?.id) {
+        chrome.tabs.update(tab.id, { url });
+      }
+    });
     document.getElementById("btn-continue-reading")?.addEventListener("click", async () => {
       const tab = await getActiveTab();
       if (!tab?.id) return;
@@ -1362,7 +1374,6 @@
     history.forEach((session, index) => {
       const btn = document.createElement("button");
       const count = session.sessionCount ?? 1;
-      const xp = session.xpGained ?? 0;
       btn.className = "sessions-item";
       btn.innerHTML = `
         <span class="sessions-dot sessions-${index % 5}"></span>
@@ -1373,8 +1384,6 @@
             ${count} session${count !== 1 ? "s" : ""}
             </small>
         </span>
-
-        <b>${xp} XP</b> 
 
         <span>\u203A</span>
         `;
@@ -1416,7 +1425,7 @@
             titleEl.textContent = session.title;
           }
           if (metaEl) {
-            metaEl.textContent = `${session.wordsRead || 0} words \u2022 ${session.totalXp || 0} XP \u2022 ${session.percentComplete || 0}% complete \u2022 Page ${(session.currentPage ?? 0) + 1}`;
+            metaEl.textContent = `${session.wordsRead || 0} words read \u2022 ${session.totalXp || 0} XP earned \u2022 ${session.percentComplete || 0}% complete \u2022 Page ${(session.currentPage ?? 0) + 1}`;
           }
         });
       }
@@ -1425,9 +1434,18 @@
   function showSessionSummary(session) {
     const title = document.getElementById("sessionsNextTitle");
     const meta = document.getElementById("sessionsNextMeta");
+    const openBtn = document.getElementById("openSessionArticle");
     if (!title || !meta) return;
     title.textContent = session.title;
     meta.textContent = `${session.wordsRead || 0} words \u2022 ${session.totalXp || session.xpGained || 0} XP earned \u2022 ${session.sessionCount || 1} sessions`;
+    if (openBtn) {
+      if (session.url) {
+        openBtn.dataset.url = session.url;
+        openBtn.classList.remove("hidden");
+      } else {
+        openBtn.classList.add("hidden");
+      }
+    }
   }
 
   // popup/popup.js
@@ -1450,7 +1468,7 @@
   function initPetUI() {
     $("#carePet")?.addEventListener("click", () => {
       console.log("[PET] Care button clicked");
-      loadPet2((pet) => {
+      loadPet((pet) => {
         const result = careForPet(pet);
         if (!result.success) {
           alert(result.reason);
@@ -1469,14 +1487,14 @@
       });
     });
     $("#openInventory")?.addEventListener("click", () => {
-      loadPet2((pet) => {
+      loadPet((pet) => {
         renderInventory(pet);
         document.getElementById("inventoryPanel")?.classList.toggle("hidden");
       });
     });
   }
   function initShopUI() {
-    loadPet2((pet) => {
+    loadPet((pet) => {
       chrome.storage.sync.get(
         ["coins", "totalCoinsSpent"],
         (state2) => {
@@ -1515,7 +1533,7 @@
     setInterval(() => {
       updateReaderPopupStats();
     }, 1e3);
-    loadPet2((pet) => {
+    loadPet((pet) => {
       console.log("[PET] Rendering:", pet);
       updatePetUI(pet);
       renderPet(pet);

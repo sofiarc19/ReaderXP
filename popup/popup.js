@@ -125,8 +125,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderPet(pet);
     renderInventory(pet);
   });
-  chrome.storage.sync.get(["coins"],(state) => {
-    state.coins ??= 0;
+  chrome.storage.sync.get(
+  ["coins", "totalCoinsEarned", "totalCoinsSpent"],
+  (state) => {
+
+    state.coins ??= 15;
+    state.totalCoinsEarned ??= 15;
+    state.totalCoinsSpent ??= 0;
+
+    chrome.storage.sync.set({
+      coins: state.coins,
+      totalCoinsEarned: state.totalCoinsEarned,
+      totalCoinsSpent: state.totalCoinsSpent
+    });
+
     updateCoinsUI(state);
-  });
+  }
+);
 });

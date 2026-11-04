@@ -7,14 +7,18 @@ body {
   font-family: var(--reader-font, sans-serif);
 }
 
+.bionic-first {
+  font-weight: bold;
+}
+
 /* Popover container */
 .reader-popover {
   width: 100%;
   background: var(--surface);
-  border: 1px solid var(--border);
+  /* border: 1px solid var(--border); */
   border-radius: 13px;
   box-shadow: var(--shadow);
-  animation: popover-in .18s ease-out;
+  /* animation: popover-in .18s ease-out; */
 }
 
 @keyframes popover-in {
@@ -27,7 +31,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px 12px;
+  padding: 8px 12px 5px;
 }
 .popover-header > div { display: grid; gap: 2px; }
 .popover-kicker {
@@ -287,6 +291,18 @@ body {
 .sessions-current small {
   color: var(--text-muted);
   font-size: 8px;
+}
+#openSessionArticle {
+    height: 29px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--accent);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface-hover);
+    font-size: 8px;
+    font-weight: 700;
 }
 
 /* READER SETTINGS */

@@ -11,7 +11,17 @@ export function initSessions(){
         renderSessionList(history);
         });
     });
+    document.getElementById("openSessionArticle")
+        ?.addEventListener("click", async () => {
 
+        const url = document.getElementById("openSessionArticle")?.dataset.url;
+        if (!url) return;
+        const tab = await getActiveTab();
+
+        if (tab?.id) {
+            chrome.tabs.update(tab.id, { url });
+        }
+    });
     // Continue reading btn if there is a previous session
     document
     .getElementById("btn-continue-reading")
@@ -62,7 +72,7 @@ function renderSessionList(history) {
     history.forEach((session, index) => {
         const btn = document.createElement("button");
         const count = session.sessionCount ?? 1;
-        const xp = session.xpGained ?? 0;
+        //const xp = session.xpGained ?? 0;
 
         btn.className = "sessions-item";
 
@@ -76,10 +86,8 @@ function renderSessionList(history) {
             </small>
         </span>
 
-        <b>${xp} XP</b> 
-
         <span>›</span>
-        `; //XP needs to be updated cause its currently not correct 
+        `; 
 
         btn.addEventListener("click", () => {
         showSessionSummary(session);
@@ -148,8 +156,8 @@ export async function checkForPreviousSession() {
 
             if (metaEl) {
                 metaEl.textContent =
-                `${session.wordsRead || 0} words • ` +
-                `${session.totalXp || 0} XP • ` +
+                `${session.wordsRead || 0} words read • ` +
+                `${session.totalXp || 0} XP earned • ` +
                 `${session.percentComplete || 0}% complete • ` +
                  `Page ${(session.currentPage ?? 0) + 1}`;
             }
@@ -159,11 +167,12 @@ export async function checkForPreviousSession() {
     
 // Session Summary 
 function showSessionSummary(session) {
-    const title =
-        document.getElementById("sessionsNextTitle");
+    const title = document.getElementById("sessionsNextTitle");
 
-    const meta =
-        document.getElementById("sessionsNextMeta");
+    const meta = document.getElementById("sessionsNextMeta");
+
+
+    const openBtn = document.getElementById("openSessionArticle");
 
     if (!title || !meta) return;
 
@@ -175,4 +184,13 @@ function showSessionSummary(session) {
         `${session.wordsRead || 0} words • ` +
         `${session.totalXp || session.xpGained || 0} XP earned • ` +
         `${session.sessionCount || 1} sessions`;
+
+    if (openBtn) {
+        if (session.url) {
+            openBtn.dataset.url = session.url;
+            openBtn.classList.remove("hidden");
+        } else {
+            openBtn.classList.add("hidden");
+        }
+    }
 }

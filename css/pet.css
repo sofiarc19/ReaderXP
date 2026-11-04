@@ -335,7 +335,7 @@
 }
 
 /* SHOP */
-.shop-view { padding: 15px 16px 16px; }
+.shop-view { padding: 12px 16px 12px; }
 
 .shop-heading {
   display: flex;
@@ -376,7 +376,7 @@
   /* grid-template-columns: repeat(2, 1fr); */
   grid-template-columns: 1fr 1fr 1fr;
   gap: 10px;
-  margin-bottom: 12px;
+  /* margin-bottom: 12px; */
 }
 .shop-item {
   min-height: 92px;

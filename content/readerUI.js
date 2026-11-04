@@ -4,6 +4,7 @@ import { showPausedPage, showSummaryPage } from "./summary.js";
 
 // Choose the correct word‑transform function (normal or bionic)
 export function getActiveTransformFunction() {
+  // console.log("[BIONIC ENABLED]", state.readerSettings.bionic);
   return state.readerSettings.bionic ? transformBionic : transformNormal;
 }
 
@@ -41,6 +42,7 @@ export function transformNormal(word) {
 
 // Bionic mode: bold the first ~40% of each word
 export function transformBionic(word) {
+  // console.log("[BIONIC]", word);
   const cutoff = Math.ceil(word.length * 0.4);
   const first = word.slice(0, cutoff);
   const rest = word.slice(cutoff);
@@ -56,7 +58,7 @@ export function applyTheme(themeName) {
     el.classList.remove(
       "theme-dark",
       "theme-light",
-      "theme-forest"
+      "theme-green"
     );
     el.classList.add(themeName);
   });
