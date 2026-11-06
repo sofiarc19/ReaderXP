@@ -1,7 +1,7 @@
 import { extractSentences, extractSentencesFromText } from "./sentenceProcessing.js";
 import { injectReaderArea, updateReaderStyle } from "./readerUI.js";
 import { toggleBlur, blurEnabled } from "./blur.js";
-import { buildPageIndexMap, setActiveParagraph, nextPage, updateLeveling } from "./pagination.js";
+import { buildPageIndexMap, setActivePage, nextPage, updateLeveling } from "./pagination.js";
 import { saveSessionCheckpoint } from "./sessions.js";
 import { showSummaryPage, showPausedPage} from "./summary.js";
 import { state } from "./state.js";
@@ -11,7 +11,7 @@ export function setupMessaging() {
   const api = globalThis.browser || globalThis.chrome;
 
   api.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-    console.log("[CONTENT] Message received:", msg);
+    // console.log("[CONTENT] Message received:", msg);
 
     switch (msg.action) {
       case "ping":
@@ -37,7 +37,7 @@ export function setupMessaging() {
             // Reset reader content
             state.allSentences = [];
             state.pageIndexMap = [];
-            state.currentChunk = null;
+            state.currentChunk = [];
             state.activeElement = null;
             state.currentPage = 0;
             // Current article information
@@ -46,6 +46,7 @@ export function setupMessaging() {
             // Reading progress
             state.wordsReadSoFar = 0;
             state.currentPageWords = 0;
+            state.currentPageChars = 0;
            // XP / Coin tracking
             state.coinsAtStart = state.coins;
             state.levelAtStart = state.level;
@@ -72,7 +73,8 @@ export function setupMessaging() {
             state.sessionNotes = [];
             state.sessionTags = [];
             // Reset XP awards for paragraphs
-            state.paragraphXpMap.clear();
+            state.pageXpmap.clear();
+            state.paragraphCache.clear();
 
             // Pause-related tracking
             state.pausedAt = null;
@@ -109,21 +111,17 @@ export function setupMessaging() {
               clearInterval(state.idleIntervalId);
             }
 
-            state.idleIntervalId = setInterval(() => {
-              const idleMs =
-                Date.now() - state.lastInteraction;
-              console.log(
-                "[READER] Idle check:",
-                idleMs,
-                "ms"
-              );
+            // state.idleIntervalId = setInterval(() => {
+            //   const idleMs =
+            //     Date.now() - state.lastInteraction;
+            //   console.log("[READER] Idle check:", idleMs, "ms");
 
-              if (idleMs > 45000) {
-                console.log(
-                  "[READER] User idle too long"
-                );
-              }
-            }, 5000);
+            //   if (idleMs > 45000) {
+            //     console.log(
+            //       "[READER] User idle too long"
+            //     );
+            //   }
+            // }, 5000);
 
             // Auto-save reading progress every 30 seconds
             if (state.autosaveId) {
@@ -151,11 +149,12 @@ export function setupMessaging() {
             injectReaderArea();
 
             // Use manually selected text if provided
-            const manual = msg.selectedText?.trim();
-            if (manual && manual.length > 0) {
-              state.allSentences = extractSentencesFromText(manual);
+            const selectedText = msg.selectedText?.trim();
+            if (selectedText) {
+              console.log("[READER] Using selected text");
+              state.allSentences = extractSentencesFromText(selectedText);
             } else {
-              // Otherwise extract sentences from the page
+              console.log("[READER] Using Readability extraction");
               state.allSentences = extractSentences();
             }
             
@@ -165,16 +164,13 @@ export function setupMessaging() {
 
             // Apply styling + highlight first paragraph
             if (msg.resumePage !== undefined) {
-              state.currentPage = msg.resumePage;
-            }
-
-            if (msg.resumePercent !== undefined) {
-              state.percentComplete =
-                msg.resumePercent;
+              state.currentPage = Math.max(0,
+                Math.min(msg.resumePage,state.pageIndexMap.length - 1)
+              );
             }
 
             updateReaderStyle();
-            setActiveParagraph();
+            setActivePage();
             sendResponse({
               ok: true,
               active: true,
@@ -192,7 +188,7 @@ export function setupMessaging() {
       return true;
         
       case "next-page":
-        nextPage();        // move to next paragraph
+        nextPage();        // move to next page
         sendResponse({ ok: true });
         break;
 
@@ -301,5 +297,5 @@ export function setupMessaging() {
     return true; 
   });
 
-  console.log("[CONTENT] Messaging ready");
+  // console.log("[CONTENT] Messaging ready");
 }

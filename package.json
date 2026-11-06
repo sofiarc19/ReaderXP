@@ -4,5 +4,8 @@
   },
   "scripts": {
     "build": "esbuild content/content.js --bundle --outfile=dist/content.js && esbuild popup/popup.js --bundle --outfile=dist/popup.js"
+  },
+  "dependencies": {
+    "@mozilla/readability": "^0.6.0"
   }
 }

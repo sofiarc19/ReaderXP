@@ -109,8 +109,9 @@ export function saveReadingSession(session) {
           currentSession.percentComplete || 0,
           session.percentComplete || 0);
         currentSession.currentPage = session.currentPage;
-        currentSession.sessionCount =
-          (currentSession.sessionCount || 0) + 1;
+        currentSession.sessionCount = Math.max(
+          currentSession.sessionCount || 1, 
+          session.sessionCount || 1);
         currentSession.lastReadAt = session.endedAt;
         currentSession.endedAt = session.endedAt;
         currentSession.status = session.status;
@@ -164,18 +165,7 @@ export function loadsessions(callback) {
 // Coin helper: based on words read /500
 // based on progress and amount of words
 export function getSessionCoinReward() {
-  // const progressMade =
-  //   Math.max(0, state.percentComplete - state.sessionStartPercent);
-
-  // const progressReward = Math.floor(progressMade / 10);
-
-  // const effortReward = Math.floor(state.wordsReadSoFar / 1000);
-
-  // let coins = progressReward + effortReward;
-  let coins =
-    Math.floor(
-      state.wordsReadSoFar / 500
-    );
+  let coins =Math.floor(state.wordsReadSoFar / 500);
 
   if (state.percentComplete >= 100) {
     coins += 5;

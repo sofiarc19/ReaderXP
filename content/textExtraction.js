@@ -1,115 +1,227 @@
 // content/textExtraction.js
+import { Readability } from "@mozilla/readability";
 
-// Check if a node is inside the extension's reader UI (exclude from extraction)
+// Prevent extraction from pulling text from our own extension UI.
 export function isInsideExtensionUI(el) {
-  return el.closest("#reader-area-bar");
+  return !!el?.closest("#reader-area-bar");
 }
 
-export function extractAllText(excludedIds = [], excludedClasses = []) {
-  // Common selectors to ignore (headers, nav, ads, sidebars, etc.)
-  const commonExcluded = [
-    "header", "nav", "footer", "aside",
-    "#extension-box", "#reader-area-bar",
-    ".sidebar", ".menu", ".toolbar", ".ruler",
-    ".infobox", ".metadata", ".reference", ".navbox",
-    ".subscription", ".login", ".advertisement", ".promo",
-    ".related", ".share", ".toc", ".mw-jump-link"
-  ];
+// Split oversized paragraphs so they fit better inside the reader.
+function splitLargeParagraph(paragraph) {
+  const MAX_CHARS = 500;
+  const MAX_SENTENCES = 4;
 
-  // Combine user‑provided exclusions with built‑in ones
-  const allExcluded = [
-    ...excludedIds.map(id => `#${CSS.escape(id)}`),
-    ...excludedClasses.map(cls => `.${CSS.escape(cls)}`),
-    ...commonExcluded
-  ];
-
-  // Prefer main content containers; fallback to body
-  const roots = document.querySelectorAll(
-    "article, main, #content, .content, .mw-parser-output, .post, .entry-content, .document-content"
+  const segmenter = new Intl.Segmenter(
+    navigator.language || "en",
+    {
+      granularity: "sentence",
+    }
   );
-  const walkerRoots = roots.length ? roots : [document.body];
 
-  let text = "";
+  const sentences = [...segmenter.segment(paragraph)]
+    .map(part => part.segment.trim())
+    .filter(Boolean);
 
-  for (const root of walkerRoots) {
-    // TreeWalker to collect visible text nodes
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-      acceptNode(node) {
-        const t = node.textContent.trim();
-        if (!t) return NodeFilter.FILTER_REJECT;
+  const chunks = [];
 
-        const p = node.parentElement;
-        if (!p) return NodeFilter.FILTER_REJECT;
+  let currentChunk = "";
+  let currentSentenceCount = 0;
 
-        // Skip excluded containers
-        for (const sel of allExcluded) {
-          if (p.closest(sel)) return NodeFilter.FILTER_REJECT;
-        }
+  for (const sentence of sentences) {
+    const wouldExceedChars =
+      currentChunk.length + sentence.length > MAX_CHARS;
 
-        // Skip captions, tables, alt/aria text
-        if (p.closest("figcaption, caption, table, th, td"))
-          return NodeFilter.FILTER_REJECT;
+    const wouldExceedSentenceCount =
+      currentSentenceCount >= MAX_SENTENCES;
 
-        if (p.hasAttribute("aria-label") || p.hasAttribute("alt"))
-          return NodeFilter.FILTER_REJECT;
+    if (
+      currentChunk &&
+      (wouldExceedChars || wouldExceedSentenceCount)
+    ) {
+      chunks.push(currentChunk.trim());
 
-        // Skip link fragments, footnotes, coordinates, IPA, tiny UI text
-        if (p.closest("a")) {
-          if (/^\[\w+\]$/.test(t)) return NodeFilter.FILTER_REJECT; // footnotes
-          if (/°/.test(t)) return NodeFilter.FILTER_REJECT; // coordinates
-          if (/^\/.*\/$/.test(t)) return NodeFilter.FILTER_REJECT; // IPA
-          if (t.length < 3) return NodeFilter.FILTER_REJECT; // UI fragments
-        }
-
-        // Skip hidden elements
-        const style = window.getComputedStyle(p);
-        if (style.display === "none" || style.visibility === "hidden")
-          return NodeFilter.FILTER_REJECT;
-
-        // Skip non‑content tags
-        const tag = p.tagName.toLowerCase();
-        if (["script", "style", "noscript", "svg", "math", "meta", "link"].includes(tag))
-          return NodeFilter.FILTER_REJECT;
-
-        // Skip extremely short fragments
-        if (t.length < 10) return NodeFilter.FILTER_REJECT;
-
-        // Skip common UI phrases
-        if (/^(Create your free account|Subscribe|Login|Register|Share|Download|Jump to|Navigation|From Wikipedia|Contents|Tools|Languages)/i.test(t))
-          return NodeFilter.FILTER_REJECT;
-
-        return NodeFilter.FILTER_ACCEPT;
-      }
-    });
-
-    // Collect accepted text nodes
-    let node;
-    while ((node = walker.nextNode())) {
-      text += " " + node.textContent;
+      currentChunk = sentence;
+      currentSentenceCount = 1;
+    } else {
+      currentChunk +=
+        (currentChunk ? " " : "") + sentence;
+      currentSentenceCount++;
     }
   }
 
-  // Project Gutenberg cleanup
-  if (location.hostname.includes("gutenberg.org")) {
-    const start = text.match(/START OF THE PROJECT GUTENBERG EBOOK/i);
-    if (start) text = text.slice(start.index + start[0].length);
-    text = text.replace(/END OF THE PROJECT GUTENBERG EBOOK[\s\S]+$/i, "");
-    text = text.replace(/Project Gutenberg License[\s\S]+?www\.gutenberg\.org/gi, "");
+  if (currentChunk.trim()) {
+    chunks.push(currentChunk.trim());
   }
 
-  // Wikipedia cleanup
-  if (location.hostname.includes("wikipedia.org")) {
-    text = text.replace(/^From Wikipedia, the free encyclopedia/i, "");
-    text = text.replace(/^\s*This article is about[\s\S]+?(?=\b[A-Z])/i, "");
-    text = text.replace(/\b\(born\b.*?\)|\b\(died\b.*?\)/gi, "");
-    text = text.replace(/References[\s\S]+$/i, "");
-    text = text.replace(/External links[\s\S]+$/i, "");
-    text = text.replace(/See also[\s\S]+$/i, "");
+  return chunks;
+}
+
+// Basic paragraph cleanup.
+function cleanParagraph(text) {
+  return text
+    .replace(/\u00A0/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\[\d+\]/g, "")
+    .trim();
+}
+
+// Filters obvious junk paragraphs.
+function isJunkParagraph(text) {
+  if (!text) return true;
+
+  if (text.length < 15) return true;
+
+  if (
+    /^(subscribe|sign up|register|log in|login|get started|share)$/i.test(
+      text
+    )
+  ) {
+    return true;
   }
 
-  // General cleanup
-  text = text.replace(/\s*,\s*,/g, ",");
-  text = text.replace(/\s{2,}/g, " ");
+  if (
+    /^[0-9\s.,\-()%:]+$/.test(text)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+// Wikipedia-specific cleanup.
+function cleanupWikipedia(paragraphs) {
+  const result = [];
+
+  for (const p of paragraphs) {
+    if (
+      /^(references|external links|see also|notes)$/i.test(
+        p.trim()
+      )
+    ) {
+      break;
+    }
+
+    result.push(
+      p
+        .replace(/\(born.*?\)/gi, "")
+        .replace(/\(died.*?\)/gi, "")
+        .trim()
+    );
+  }
+
+  return result;
+}
+
+// Gutenberg cleanup.
+function cleanupGutenberg(text) {
+  let cleaned = text;
+
+  const start = cleaned.match(
+    /START OF THE PROJECT GUTENBERG EBOOK/i
+  );
+
+  if (start) {
+    cleaned = cleaned.slice(
+      start.index + start[0].length
+    );
+  }
+
+  cleaned = cleaned.replace(
+    /END OF THE PROJECT GUTENBERG EBOOK[\s\S]+$/i,
+    ""
+  );
+
+  cleaned = cleaned.replace(
+    /Project Gutenberg License[\s\S]+?www\.gutenberg\.org/gi,
+    ""
+  );
+
+  return cleaned;
+}
+
+// Extract article paragraphs using Readability.
+ // Returns paragraph chunks instead of raw text nodes, preserving structure.
+export function extractParagraphs() {
+  try {
+    const documentClone = document.cloneNode(true);
+
+    // Remove extension UI from clone
+    documentClone.querySelectorAll(
+        "#reader-area-bar, #extension-box"
+      ).forEach(el => el.remove());
+
+    const article = new Readability(documentClone).parse();
+
+    if (!article?.content) {
+      console.warn("[READER] Readability failed, falling back.");
+      const fallbackParagraphs = [...document.querySelectorAll(
+        "article p, main p, p"),].map(el => cleanParagraph(el.textContent))
+        .filter(p => !isJunkParagraph(p));
+
+      return fallbackParagraphs;
+    }
+    console.log(
+      "[READER] Readability Title:",
+      article.title
+    );
+
+    console.log(
+      "[READER] Article Length:",
+      article.textContent?.length
+    );
+    const container = document.createElement("div");
+    container.innerHTML = article.content;
+
+    let paragraphs = [
+      ...container.querySelectorAll(
+        "p, blockquote"
+      ),
+    ]
+      .map(el => cleanParagraph(el.textContent))
+      .filter(p => !isJunkParagraph(p));
+
+    if (location.hostname.includes("wikipedia.org")) {
+      paragraphs = cleanupWikipedia(paragraphs);
+    }
+
+    const finalParagraphs = [];
+
+    paragraphs.forEach(paragraph => {
+      const split =
+        splitLargeParagraph(paragraph);
+
+      finalParagraphs.push(...split);
+    });
+
+    console.log(
+      `[READER] Extracted ${finalParagraphs.length} paragraph chunks`
+    );
+
+    return finalParagraphs;
+  }
+  catch (error) {
+    console.error(
+      "[READER] Paragraph extraction failed:",
+      error
+    );
+
+    return [];
+  }
+}
+
+// Backwards-compatible API used by sentenceProcessing.js.
+export function extractAllText() {
+  let paragraphs = extractParagraphs();
+
+  let text = paragraphs.join("\n\n");
+
+  if (
+    location.hostname.includes(
+      "gutenberg.org"
+    )
+  ) {
+    text = cleanupGutenberg(text);
+  }
 
   return text.trim();
 }

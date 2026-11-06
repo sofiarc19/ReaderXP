@@ -10,42 +10,37 @@ export function getActiveTransformFunction() {
 
 // Render a chunk of sentences into the reader UI
 export function renderChunk(chunk) {
+  if (!chunk?.length) {
+    readerActive.innerHTML = "<p>No readable content found.</p>";
+    return;
+  }
   const readerActive = document.getElementById("reader-active");
   if (!readerActive) return;
 
   const transform = getActiveTransformFunction();
 
   // Transform each sentence → each word → join back into HTML
-  const html = chunk
-    .map(sentence =>
+  const html = chunk.map(sentence =>
       sentence.split(" ").map(word => transform(word)).join(" ")
-    )
-    .join(" ");
+    ).join("<br>");
 
   readerActive.innerHTML = html;
 }
 
 // Re-render the current chunk (used when settings change)
 export function rerenderReader() {
-  console.log(
-    "[RERENDER]",
-    state.currentChunk
-  );
-  if (!state.currentChunk) return;
+  // console.log("[RERENDER]", state.currentChunk);
+  if (!state.currentChunk?.length) return;
   renderChunk(state.currentChunk);
-}
-
-// Normal mode: return word unchanged
-export function transformNormal(word) {
-  return word;
 }
 
 // Bionic mode: bold the first ~40% of each word
 export function transformBionic(word) {
-  // console.log("[BIONIC]", word);
-  const cutoff = Math.ceil(word.length * 0.4);
-  const first = word.slice(0, cutoff);
-  const rest = word.slice(cutoff);
+  const safeWord = escapeHtml(word);
+
+  const cutoff = Math.ceil(safeWord.length * 0.4);
+  const first = safeWord.slice(0, cutoff);
+  const rest = safeWord.slice(cutoff);
 
   return `<span class="bionic-first">${first}</span>${rest}`;
 }
@@ -72,7 +67,7 @@ export function updateReaderProgress() {
   const total = state.pageIndexMap.length;
   const current = state.currentPage + 1;
 
-  progressEl.textContent = `${current} / ${total}`;
+  progressEl.textContent = total > 0 ? `${current} / ${total}` : "0 / 0";
 }
 
 // Inject the reader UI bar into the page
@@ -217,4 +212,17 @@ export function updateReaderStyle() {
   });
 
   rerenderReader();
+}
+
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+export function transformNormal(word) {
+  return escapeHtml(word);
 }

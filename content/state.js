@@ -28,6 +28,7 @@ export const state = {
   articleUrl: "",
   articleWordCount: 0, // total words in article
   currentPageWords: 0, // words in visible page
+  currentPageChars: 0, // current page character count
   wordsReadSoFar: 0,  // accumulated words read
 
   percentComplete: 0,
@@ -44,7 +45,7 @@ export const state = {
   paragraphSwitches: 0,
 
   // Track which paragraphs have already given XP
-  paragraphXpMap: new Set(),
+  pageXpmap: new Set(),
 
   // Leveling system
   level: 1,
@@ -65,7 +66,7 @@ export const state = {
   sessionReadingCoins: 0,    // from article progress
   
   // The actual slice of sentences being displayed
-  currentChunk: null,
+  currentChunk: [],
   // Index of the first sentence in the current chunk
   activeElement: null,
 

@@ -4,9 +4,9 @@ import { extractSentences } from "./sentenceProcessing.js";
 import { showSummaryPage } from "./summary.js";
 import { saveSessionCheckpoint } from "./sessions.js";
 
-// Character Thresholds
-const SHORT_THRESHOLD = 300;
-const LONG_THRESHOLD = 700;
+
+const MAX_PAGE_CHARS = 850; // need to tweak it still 
+const MAX_PAGE_SENTENCES = 6; // no more than 7 or no more than 850/900 char?
 
 // XP multipliers for rereads
 const XP_MULTIPLIERS = {
@@ -16,30 +16,31 @@ const XP_MULTIPLIERS = {
 };
 // state.paragraphCache = new Map();
 
-// Dynamic Sentence Count, Determines how many sentences to show on a page based on text length.
-export function getDynamicSentenceCount(sentences, startIndex) {
-  const BASE = 9;
-  const MIN = 1;
-  const MAX = 15;
+export function getPageChunkInfo(sentences, startIndex) {
+  let chars = 0;
+  let count = 0;
 
-  let count = BASE;
-  let totalChars = 0;
+  while (startIndex + count < sentences.length) {
+    const sentence = sentences[startIndex + count];
 
-  // Measure the combined length of the next BASE sentences
-  for (let i = 0; i < BASE; i++) {
-    const s = sentences[startIndex + i];
-    if (!s) break;
-    totalChars += s.length;
+    if (!sentence) break;
+
+     // stop if we've reached the sentence cap
+    if (count >= MAX_PAGE_SENTENCES) {
+      break;
+    }
+
+    const nextChars = chars + sentence.length;
+    // stop if adding another sentence would exceed page size
+    if (count > 0 && nextChars > MAX_PAGE_CHARS) {
+      break;
+    }
+
+    chars = nextChars;
+    count++;
   }
 
-  // Adjust count based on density
-  if (totalChars < SHORT_THRESHOLD) {
-    count = Math.min(MAX, BASE + 2);
-  } else if (totalChars > LONG_THRESHOLD) {
-    count = Math.max(MIN, BASE - 2);
-  }
-
-  return count;
+  return { count: Math.max(1, count), chars,};
 }
 
 // Page Index Map, Builds an array of starting indexes for each page.
@@ -49,7 +50,8 @@ export function buildPageIndexMap() {
 
   while (index < state.allSentences.length) {
     map.push(index);
-    const count = getDynamicSentenceCount(state.allSentences, index);
+
+    const { count } = getPageChunkInfo(state.allSentences,index);
     index += count;
   }
 
@@ -58,17 +60,12 @@ export function buildPageIndexMap() {
 
 //Active Paragraph, Selects the correct chunk of sentences for the current page, 
 //renders it, and updates progress.
-export function setActiveParagraph() {
+export function setActivePage() {
   // If no sentences yet, extract from page
   if (state.allSentences.length === 0) {
     state.allSentences = extractSentences();
   }
-  state.articleWordCount =
-      state.allSentences
-        .join(" ")
-        .split(/\s+/)
-        .filter(Boolean)
-        .length;
+  state.articleWordCount = state.allSentences.join(" ").split(/\s+/).filter(Boolean).length;
         
   // Build pagination if missing
   if (state.pageIndexMap.length === 0) {
@@ -79,18 +76,22 @@ export function setActiveParagraph() {
   const start = state.pageIndexMap[state.currentPage];
   
   // Calculate how many sentences this page should display
-  const count = getDynamicSentenceCount(state.allSentences, start);
+  const { count } = getPageChunkInfo(state.allSentences, start);
   const end = start + count;
 
   // Slice out the chunk of sentences for this page
   state.currentChunk = state.allSentences.slice(start, end);
-  state.currentPageWords =
-    state.currentChunk
-      .join(" ")
-      .split(/\s+/)
-      .filter(Boolean)
-      .length;
+  const pageText = state.currentChunk.join(" ");
 
+  state.currentPageWords = pageText.split(/\s+/).filter(Boolean).length;
+
+  state.currentPageChars = pageText.length;
+  console.log("[PAGE]", {
+    page: state.currentPage + 1,
+    chars: state.currentPageChars,
+    words: state.currentPageWords,
+    sentences: state.currentChunk.length,
+  });
   // Render the chunk into the reader UI
   renderChunk(state.currentChunk);
 
@@ -105,7 +106,7 @@ export function setActiveParagraph() {
 // spent sufficient time reading the content before receiving XP.
 export function updateLeveling() {
   return new Promise((resolve) => {
-  const paragraphId = state.currentPage;
+  const pageId = state.currentPage;
   const sentences = state.currentChunk;
 
   if (!state.timeStarted) {
@@ -117,14 +118,14 @@ export function updateLeveling() {
   const timeMs = Date.now() - state.timeStarted;
 
   // Prevent double XP
-  if (state.paragraphXpMap.has(paragraphId)) {
+  if (state.pageXpmap.has(pageId)) {
     console.log("[LEVEL] No XP: paragraph already rewarded.");
     resolve();
     return;
   }
 
   // Determine expected reading time
-  const { expectedTime, difficulty } = getCachedStats(paragraphId, sentences);
+  const { expectedTime, difficulty } = getCachedStats(pageId, sentences);
   console.log("[LEVEL] Time spent:", timeMs, "Expected:", expectedTime);
 
   if (timeMs < expectedTime) {
@@ -172,7 +173,7 @@ export function updateLeveling() {
     state.sessionXp += gainedXp;
 
     // Mark paragraph as rewarded
-    state.paragraphXpMap.add(paragraphId);
+    state.pageXpmap.add(pageId);
 
     // Level up check
     while (state.xp >= getRequiredXp(state.level)) {
@@ -263,7 +264,7 @@ export function nextPage() {
             state.pageIndexMap.length) * 100
         );
       saveSessionCheckpoint();
-      setActiveParagraph();
+      setActivePage();
 
       chrome.storage.sync.set({
         readingActive: true,
@@ -301,15 +302,15 @@ export function prevPage() {
     state.paragraphSwitches++;
     state.currentPage--;
     saveSessionCheckpoint();
-    setActiveParagraph();
+    setActivePage();
   }
 }
 
 // helper functions
 // Cached paragraph stats (density, expected time, difficulty)
-function getCachedStats(paragraphId, sentences) {
-  if (state.paragraphCache.has(paragraphId)) {
-    return state.paragraphCache.get(paragraphId);
+function getCachedStats(pageId, sentences) {
+  if (state.paragraphCache.has(pageId)) {
+    return state.paragraphCache.get(pageId);
   }
 
   // Compute stats
@@ -321,7 +322,7 @@ function getCachedStats(paragraphId, sentences) {
   const stats = { chars, sentenceCount, expectedTime, difficulty };
 
   // Store in cache
-  state.paragraphCache.set(paragraphId, stats);
+  state.paragraphCache.set(pageId, stats);
 
   return stats;
 }
@@ -333,45 +334,44 @@ function getParagraphStats(sentences) {
   return { chars, sentenceCount };
 }
 
+// 72 words  -> 10.8s
+// 80 words  -> 12.0s
+// 100 words -> 15.0s
+// 120 words -> 18.0s
+// 143 words -> 20.0s
 function getExpectedTimeMs(sentences) {
-  const { chars, sentenceCount } = getParagraphStats(sentences);
+  const text = sentences.join(" ");
+  const wordCount = text.split(/\s+/).filter(Boolean).length;
 
-  // Base time: 1.2 seconds per sentence
-  let base = sentenceCount * 1200;
+  // Focused reading mode
+  const minutes = wordCount / 400;
+  const rawMs = minutes * 60 * 1000;
 
-  // Density multiplier: more characters = slower reading
-  const densityMultiplier = chars / (sentenceCount * 80); 
-  // 80 chars per sentence is average
+  const finalMs = Math.max(4000,
+    Math.min(18000, Math.round(rawMs))
+  ); //cap at 20secs per page?
 
-  base *= densityMultiplier;
+  console.log("[READ TIME]", {
+    words: wordCount,
+    rawMs: Math.round(rawMs),
+    finalMs,
+  });
 
-  // Clamp between 8s and 30s
-  base = Math.max(base, 8000);
-  base = Math.min(base, 30000);
-
-  return Math.round(base);
+  return finalMs;
 }
 
 function getParagraphDifficulty(sentences) {
-  const { chars, sentenceCount } = getParagraphStats(sentences);
+  const { chars } = getParagraphStats(sentences);
+
+  const words = sentences.join(" ").split(/\s+/).filter(Boolean).length;
 
   let xp = 0;
 
-  // XP from sentence count (structure)
-  xp += sentenceCount * 1.5; // 1.5 XP per sentence
+  xp += words / 50;
+  xp += chars / 300;
 
-  // XP from density (content weight)
-  xp += chars / 120; // 120 chars ≈ 1 XP
-
-  // Short paragraph bonus
-  if (chars < SHORT_THRESHOLD) xp += 1;
-
-  // Long paragraph bonus
-  if (chars > LONG_THRESHOLD) xp += 4;
-
-  // Clamp between 3 and 30 XP
   xp = Math.max(xp, 3);
-  xp = Math.min(xp, 30);
+  xp = Math.min(xp, 20);
 
   return Math.round(xp);
 }

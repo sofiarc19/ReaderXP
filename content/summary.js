@@ -82,42 +82,30 @@ export function showSummaryPage() {
       }
     );
 
+    // Count the currently visible page if it hasn't
+// already been counted through page navigation.
+    if (state.currentPage === 0 && state.wordsReadSoFar === 0 &&
+      state.currentPageWords > 0) {
+      state.wordsReadSoFar = state.currentPageWords;
+    }
     const session = buildReadingSession(state);
     saveReadingSession(session);
   
-    const totalSeconds =
-      Math.floor(session.totalTimeMs / 1000);
+    const totalSeconds = Math.floor(session.totalTimeMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
 
-    const hours =
-      Math.floor(totalSeconds / 3600);
-
-    const minutes =
-      Math.floor((totalSeconds % 3600) / 60);
-
-    const seconds =
-      totalSeconds % 60;
-
-    const formattedTime =
-      hours > 0
+    const formattedTime = hours > 0
         ? `${hours}h ${minutes}m ${seconds}s`
         : `${minutes}m ${seconds}s`;
 
-    document
-      .getElementById("reader-page")
-      ?.classList.add("hidden");
+    document.getElementById("reader-page")?.classList.add("hidden");
+    document.getElementById("reader-paused")?.classList.add("hidden");
+    document.getElementById("reader-summary")?.classList.remove("hidden");
 
-    document
-      .getElementById("reader-paused")
-      ?.classList.add("hidden");
-
-    document
-      .getElementById("reader-summary")
-      ?.classList.remove("hidden");
-
-    document
-    .getElementById("summary-content")
+    document.getElementById("summary-content")
     .innerHTML = `
-    
       <div class="summary-header">
         <h1>Reading Summary</h1>
         <p>Your session has been saved.</p>
@@ -179,8 +167,7 @@ export function showSummaryPage() {
       <div id="summary-topic-picker" class="hidden"></div>
     `;
     
-  document
-    .getElementById("summary-close-btn")
+  document.getElementById("summary-close-btn")
     ?.addEventListener("click", () => {
       chrome.storage.sync.set({
         readingActive: false,
@@ -193,8 +180,7 @@ export function showSummaryPage() {
         ?.remove();
     });
 
-    document
-      .getElementById("summary-pet-shop")
+    document.getElementById("summary-pet-shop")
       ?.addEventListener("click", () => {
 
       toggleBlur();

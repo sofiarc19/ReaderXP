@@ -1,5 +1,4 @@
-console.log("CONTENT SCRIPT LOADED");
-
+// console.log("CONTENT SCRIPT LOADED");
 import { setupMessaging } from "./messaging.js";
 import { startObserver } from "./blur.js";
 
