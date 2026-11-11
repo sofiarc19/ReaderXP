@@ -1,3 +1,7 @@
+// pagination.js is the reading progression engine of ReaderXP. It takes the processed 
+// sentences and turns them into pages, tracks user progress through those pages, determines 
+// when XP should be awarded, calculates reading difficulty, handles leveling, and updates completion progress.
+
 import { state } from "./state.js";
 import { renderChunk, updateReaderProgress } from "./readerUI.js";
 import { extractSentences } from "./sentenceProcessing.js";
@@ -142,8 +146,7 @@ export function updateLeveling() {
       .filter((item) => item.url === window.location.href)
       .sort((a, b) => (b.lastReadAt || 0) - (a.lastReadAt || 0))[0];
 
-    const sessionCount =
-      existingArticle?.sessionCount || 0;
+    const sessionCount = existingArticle?.sessionCount || 0;
 
     const completedArticle =
       existingArticle && ( existingArticle.status === "completed" ||
@@ -153,16 +156,13 @@ export function updateLeveling() {
     let xpMultiplier = XP_MULTIPLIERS.FIRST_READ;
 
     if (completedArticle) {
-      const reads =
-        existingArticle.sessionCount || 1;
+      const reads = existingArticle.sessionCount || 1;
 
       if (reads >= 3) {
-        xpMultiplier =
-          XP_MULTIPLIERS.REPEAT_READ;
+        xpMultiplier = XP_MULTIPLIERS.REPEAT_READ;
       }
       else if (reads >= 2) {
-        xpMultiplier =
-          XP_MULTIPLIERS.SECOND_READ;
+        xpMultiplier = XP_MULTIPLIERS.SECOND_READ;
       }
     }
 
@@ -172,6 +172,10 @@ export function updateLeveling() {
     state.xp += gainedXp;
     state.sessionXp += gainedXp;
 
+    state.pageXpmap.add(pageId);
+    state.completedPages.add(pageId);
+    updateCompletionProgress();
+
     // Mark paragraph as rewarded
     state.pageXpmap.add(pageId);
 
@@ -179,12 +183,7 @@ export function updateLeveling() {
     while (state.xp >= getRequiredXp(state.level)) {
 
       state.xp -= getRequiredXp(state.level);
-      
-      const levelReward =
-        getLevelUpCoins(
-          state.level + 1
-        );
-
+      const levelReward = getLevelUpCoins(state.level + 1);
       state.level++;
 
       state.coins += levelReward;
@@ -257,12 +256,6 @@ export function nextPage() {
 
     updateLeveling().then(() => {
       state.currentPage++;
-
-      state.percentComplete =
-        Math.round(
-          ((state.currentPage + 1) /
-            state.pageIndexMap.length) * 100
-        );
       saveSessionCheckpoint();
       setActivePage();
 
@@ -278,7 +271,8 @@ export function nextPage() {
     state.wordsReadSoFar += state.currentPageWords;
 
     updateLeveling().then(() => {
-      state.percentComplete = 100;
+      updateCompletionProgress();
+
       state.sessionStatus =
         state.percentComplete >= 100
           ? "completed"
@@ -347,7 +341,7 @@ function getExpectedTimeMs(sentences) {
   const minutes = wordCount / 400;
   const rawMs = minutes * 60 * 1000;
 
-  const finalMs = Math.max(4000,
+  const finalMs = Math.max(3000,
     Math.min(18000, Math.round(rawMs))
   ); //cap at 20secs per page?
 
@@ -379,6 +373,13 @@ function getParagraphDifficulty(sentences) {
 // xp helper 
 function getRequiredXp(level) {
   return 100 + ((level - 1) * 50);
+}
+
+// progress helper
+function updateCompletionProgress() {
+  state.percentComplete = Math.round(
+    (state.completedPages.size / state.pageIndexMap.length) * 100
+  );
 }
 
 //coin helper 

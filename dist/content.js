@@ -2090,6 +2090,13 @@
 
   // content/textExtraction.js
   var import_readability = __toESM(require_readability());
+
+  // content/utils.js
+  function $$(selector) {
+    return document.querySelectorAll(selector);
+  }
+
+  // content/textExtraction.js
   function splitLargeParagraph(paragraph) {
     const MAX_CHARS = 500;
     const MAX_SENTENCES = 4;
@@ -2179,7 +2186,7 @@
       const article = new import_readability.Readability(documentClone).parse();
       if (!article?.content) {
         console.warn("[READER] Readability failed, falling back.");
-        const fallbackParagraphs = [...document.querySelectorAll(
+        const fallbackParagraphs = [...$$(
           "article p, main p, p"
         )].map((el) => cleanParagraph(el.textContent)).filter((p) => !isJunkParagraph(p));
         return fallbackParagraphs;
@@ -2285,7 +2292,6 @@
     timeSpentMs: 0,
     lastInteraction: Date.now(),
     idleIntervalId: null,
-    autosaveId: null,
     // Session tracking
     sessionStartedAt: null,
     totalSessionTime: 0,
@@ -2316,6 +2322,7 @@
     paragraphSwitches: 0,
     // Track which paragraphs have already given XP
     pageXpmap: /* @__PURE__ */ new Set(),
+    completedPages: /* @__PURE__ */ new Set(),
     // Leveling system
     level: 1,
     xp: 0,
@@ -2444,6 +2451,10 @@
           currentPage: session.currentPage
         });
       }
+      const MAX_SESSION_HISTORY = 20;
+      if (currentSession.history?.length > MAX_SESSION_HISTORY) {
+        currentSession.history.length = MAX_SESSION_HISTORY;
+      }
       if (history.length > MAX_HISTORY) {
         history.length = MAX_HISTORY;
       }
@@ -2460,30 +2471,201 @@
     if (state.percentComplete >= 100) {
       coins += 5;
     }
-    return Math.max(1, coins);
+    return coins;
   }
   function saveSessionCheckpoint() {
     if (!state.sessionStartedAt) return;
     if (!state.pageIndexMap.length) return;
     const sessionEnd = state.isPaused && state.pausedAt ? state.pausedAt : Date.now();
     state.totalSessionTime = sessionEnd - state.sessionStartedAt - state.totalPausedMs;
-    const session = buildReadingSession(state);
-    session.isCheckpoint = true;
-    session.coinsGained = 0;
-    session.status = state.percentComplete >= 100 ? "completed" : "in_progress";
-    saveReadingSession(session);
-    console.log(
-      "[CHECKPOINT]",
-      "Page:",
-      session.currentPage + 1,
-      "Progress:",
-      session.percentComplete + "%"
+    const checkpoint = {
+      url: window.location.href,
+      title: document.title,
+      currentPage: state.currentPage,
+      wordsReadSoFar: state.wordsReadSoFar,
+      percentComplete: state.percentComplete,
+      sessionStartedAt: state.sessionStartedAt,
+      totalSessionTime: state.totalSessionTime,
+      sessionXp: state.sessionXp,
+      savedAt: Date.now()
+    };
+    chrome.storage.local.set(
+      { readerCheckpoint: checkpoint },
+      () => {
+        console.log(
+          "[CHECKPOINT]",
+          "Page:",
+          checkpoint.currentPage + 1,
+          "Progress:",
+          checkpoint.percentComplete + "%"
+        );
+      }
     );
   }
 
+  // popup/petAnimations.js
+  var PET_ANIMATIONS = {
+    idle: {
+      sheet: "Idle.png",
+      frames: 10,
+      frameWidth: 96,
+      width: 96,
+      height: 100,
+      row: 0
+    },
+    box: {
+      sheet: "Box1.png",
+      frames: 4,
+      frameWidth: 96,
+      row: 0
+    },
+    box2: {
+      sheet: "Box2.png",
+      frames: 12,
+      frameWidth: 96,
+      row: 0
+    },
+    box3: {
+      sheet: "Box3.png",
+      frames: 4,
+      frameWidth: 96,
+      row: 0
+    },
+    sick1: {
+      sheet: "catsick1.png",
+      frames: 5,
+      frameWidth: 96,
+      row: 0
+    },
+    sick2: {
+      sheet: "catsick2.png",
+      frames: 4,
+      frameWidth: 96,
+      row: 0
+    },
+    cry: {
+      sheet: "Cry.png",
+      frames: 4,
+      frameWidth: 96,
+      row: 0
+    },
+    dance: {
+      sheet: "Dance.png",
+      frames: 4,
+      frameWidth: 96,
+      row: 0
+    },
+    dead: {
+      sheet: "DeadCat.png",
+      frames: 1,
+      frameWidth: 96,
+      row: 0
+    },
+    eating: {
+      sheet: "Eating.png",
+      frames: 15,
+      frameWidth: 96,
+      row: 0
+    },
+    excited: {
+      sheet: "Excited.png",
+      frames: 12,
+      frameWidth: 96,
+      row: 0
+    },
+    idle2: {
+      sheet: "Idle2.png",
+      frames: 10,
+      frameWidth: 96,
+      row: 0
+    },
+    laydown: {
+      sheet: "laydown.png",
+      frames: 12,
+      frameWidth: 96,
+      row: 0
+    },
+    sad: {
+      sheet: "Sad.png",
+      frames: 9,
+      frameWidth: 96,
+      row: 0
+    },
+    sleep: {
+      sheet: "Sleep.png",
+      frames: 4,
+      frameWidth: 96,
+      row: 0
+    },
+    sleepy: {
+      sheet: "Sleepy.png",
+      frames: 8,
+      frameWidth: 96,
+      row: 0
+    },
+    surprised: {
+      sheet: "Surprised.png",
+      frames: 12,
+      frameWidth: 96,
+      row: 0
+    },
+    waiting: {
+      sheet: "Waiting.png",
+      frames: 6,
+      frameWidth: 96,
+      row: 0
+    },
+    //Sprite Sheets:
+    refusing: {
+      sheet: "AnimationSheet.png",
+      frames: 13,
+      frameWidth: 32,
+      frameHeight: 32,
+      width: 96,
+      height: 96,
+      row: 15
+    },
+    angry: {
+      sheet: "AnimationSheet.png",
+      frames: 10,
+      frameWidth: 32,
+      frameHeight: 32,
+      width: 96,
+      height: 96,
+      row: 16
+    },
+    shy: {
+      sheet: "AnimationSheet.png",
+      frames: 12,
+      frameWidth: 32,
+      frameHeight: 32,
+      width: 96,
+      height: 96,
+      row: 17
+    },
+    annoyed: {
+      sheet: "AnimationSheet.png",
+      frames: 4,
+      frameWidth: 32,
+      frameHeight: 32,
+      width: 96,
+      height: 96,
+      row: 18
+    },
+    paw: {
+      sheet: "AnimationSheet.png",
+      frames: 11,
+      frameWidth: 32,
+      frameHeight: 32,
+      width: 96,
+      height: 96,
+      row: 19
+    }
+  };
+
   // popup/pet.js
   var DEFAULT_PET = {
-    name: "Pet name",
+    name: null,
     hunger: 100,
     mood: 100,
     hygiene: 100,
@@ -2500,6 +2682,7 @@
     //evolutionStage: 1,
     inventory: []
   };
+  var animationInterval = null;
   function loadPet(callback) {
     chrome.storage.sync.get(["pet"], (data) => {
       const pet = { ...DEFAULT_PET, ...data.pet || {} };
@@ -2519,6 +2702,53 @@
   function savePet(pet) {
     chrome.storage.sync.set({ pet });
   }
+  function setPetState(state2) {
+    startPetAnimation(state2);
+    console.log("[PET] Animation:", state2);
+  }
+  function startPetAnimation(animation = "idle") {
+    const petSprite = document.getElementById("petSprite");
+    if (!petSprite) return;
+    const config = PET_ANIMATIONS[animation];
+    if (!config) return;
+    if (!config.frames) return;
+    if (animationInterval) {
+      clearInterval(animationInterval);
+    }
+    petSprite.style.backgroundImage = `url("../popup/assets/cat/${config.sheet}")`;
+    petSprite.style.width = `${config.width ?? 96}px`;
+    petSprite.style.height = `${config.height ?? 96}px`;
+    const frameWidth = config.frameWidth ?? 96;
+    const frameHeight = config.frameHeight ?? 96;
+    const row = config.row ?? 0;
+    const startFrame = config.startFrame ?? 0;
+    let scale = 1;
+    if (config.sheet === "AnimationSheet.png") {
+      scale = 3;
+      petSprite.style.backgroundSize = `${512 * scale}px ${800 * scale}px`;
+    } else {
+      petSprite.style.backgroundSize = "";
+    }
+    let frame = 0;
+    const initialX = startFrame * frameWidth * scale;
+    const initialY = row * frameHeight * scale;
+    petSprite.style.backgroundPosition = `-${initialX}px -${initialY}px`;
+    animationInterval = setInterval(() => {
+      const currentFrame = startFrame + frame;
+      const x = currentFrame * frameWidth * scale;
+      const y = row * frameHeight * scale;
+      petSprite.style.backgroundPosition = `-${x}px -${y}px`;
+      frame = (frame + 1) % config.frames;
+    }, 150);
+    console.log("[PET]", {
+      animation,
+      row,
+      frameWidth,
+      frameHeight,
+      startFrame,
+      frames: config.frames
+    });
+  }
   function updatePetDecay(pet) {
     const now = Date.now();
     const hoursPassed = (now - pet.lastUpdated) / (1e3 * 60 * 60);
@@ -2533,6 +2763,16 @@
     if (pet.hygiene < 25) moodDecay += hoursPassed * 1;
     pet.mood = Math.max(0, pet.mood - moodDecay);
     pet.lastUpdated = now;
+  }
+  function resetDailyCare(pet) {
+    const now = Date.now();
+    const lastReset = new Date(pet.lastCareReset || now);
+    const today = new Date(now);
+    const isNewDay = lastReset.toDateString() !== today.toDateString();
+    if (isNewDay) {
+      pet.dailyCareUses = 3;
+      pet.lastCareReset = now;
+    }
   }
   var MAX_DAILY_READING_REWARDS = 10;
   function rewardPetForReading(pet) {
@@ -2551,16 +2791,6 @@
     if (lastReset.toDateString() !== today.toDateString()) {
       pet.dailyReadingRewards = 0;
       pet.lastReadingReset = now;
-    }
-  }
-  function resetDailyCare(pet) {
-    const now = Date.now();
-    const lastReset = new Date(pet.lastCareReset || now);
-    const today = new Date(now);
-    const isNewDay = lastReset.toDateString() !== today.toDateString();
-    if (isNewDay) {
-      pet.dailyCareUses = 3;
-      pet.lastCareReset = now;
     }
   }
   function getMoodCoinMultiplier(pet) {
@@ -2590,6 +2820,18 @@
       });
     };
   };
+  window.testPetAnimation = (animation) => {
+    console.log("Testing animation:", animation);
+    setPetState(animation);
+  };
+  window.listPetAnimations = () => {
+    console.table(Object.keys(PET_ANIMATIONS));
+    const img = new Image();
+    img.src = "assets/cat/AnimationSheet.png";
+    img.onload = () => {
+      console.log(img.width, img.height);
+    };
+  };
 
   // content/blur.js
   var blurEnabled = false;
@@ -2602,27 +2844,6 @@
       const bar = document.getElementById("reader-area-bar");
       if (bar) bar.remove();
     }
-  }
-  function startObserver() {
-    function attachObserver() {
-      if (!document.body) {
-        setTimeout(attachObserver, 50);
-        return;
-      }
-      let scheduled = false;
-      const observer = new MutationObserver(() => {
-        if (scheduled) return;
-        scheduled = true;
-        setTimeout(() => {
-          scheduled = false;
-        }, 100);
-      });
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true
-      });
-    }
-    attachObserver();
   }
 
   // content/summary.js
@@ -2654,12 +2875,7 @@
         state.percentComplete
       );
       const multiplier = getMoodCoinMultiplier(pet);
-      const finalCoins = Math.max(
-        1,
-        Math.round(
-          sessionCoins * multiplier
-        )
-      );
+      const finalCoins = Math.max(1, Math.round(sessionCoins * multiplier));
       state.sessionReadingCoins = finalCoins;
       state.sessionCoinsGained += finalCoins;
       state.coins += finalCoins;
@@ -2671,16 +2887,13 @@
       });
       rewardPetForReading(pet, { xpGained: state.sessionXp });
       savePet(pet);
-      console.log(
-        "[COINS]",
-        {
-          percentComplete: state.percentComplete,
-          baseCoins: sessionCoins,
-          mood: pet.mood,
-          multiplier,
-          finalCoins
-        }
-      );
+      console.log("[COINS]", {
+        percentComplete: state.percentComplete,
+        baseCoins: sessionCoins,
+        mood: pet.mood,
+        multiplier,
+        finalCoins
+      });
       if (state.currentPage === 0 && state.wordsReadSoFar === 0 && state.currentPageWords > 0) {
         state.wordsReadSoFar = state.currentPageWords;
       }
@@ -2743,10 +2956,6 @@
 
       <div class="summary-actions">
 
-        <button id="summary-pet-shop">
-          Go To Pet Shop
-        </button>
-
         <button id="summary-close-btn">
           Close
         </button>
@@ -2754,6 +2963,7 @@
       </div>
 
       <div id="summary-topic-picker" class="hidden"></div>
+    
     `;
       document.getElementById("summary-close-btn")?.addEventListener("click", () => {
         chrome.storage.sync.set({
@@ -2761,13 +2971,6 @@
         });
         toggleBlur();
         document.getElementById("reader-area-bar")?.remove();
-      });
-      document.getElementById("summary-pet-shop")?.addEventListener("click", () => {
-        toggleBlur();
-        document.getElementById("reader-area-bar")?.remove();
-        console.log(
-          "[SUMMARY] Open pet shop later"
-        );
       });
     });
   }
@@ -2912,11 +3115,12 @@
         state.xp += gainedXp;
         state.sessionXp += gainedXp;
         state.pageXpmap.add(pageId);
+        state.completedPages.add(pageId);
+        updateCompletionProgress();
+        state.pageXpmap.add(pageId);
         while (state.xp >= getRequiredXp(state.level)) {
           state.xp -= getRequiredXp(state.level);
-          const levelReward = getLevelUpCoins(
-            state.level + 1
-          );
+          const levelReward = getLevelUpCoins(state.level + 1);
           state.level++;
           state.coins += levelReward;
           state.totalCoinsEarned += levelReward;
@@ -2979,9 +3183,6 @@
       state.wordsReadSoFar += state.currentPageWords;
       updateLeveling().then(() => {
         state.currentPage++;
-        state.percentComplete = Math.round(
-          (state.currentPage + 1) / state.pageIndexMap.length * 100
-        );
         saveSessionCheckpoint();
         setActivePage();
         chrome.storage.sync.set({
@@ -2995,7 +3196,7 @@
     } else {
       state.wordsReadSoFar += state.currentPageWords;
       updateLeveling().then(() => {
-        state.percentComplete = 100;
+        updateCompletionProgress();
         state.sessionStatus = state.percentComplete >= 100 ? "completed" : "in_progress";
         console.log(
           "[SUMMARY] Final session XP:",
@@ -3037,7 +3238,7 @@
     const minutes = wordCount / 400;
     const rawMs = minutes * 60 * 1e3;
     const finalMs = Math.max(
-      4e3,
+      3e3,
       Math.min(18e3, Math.round(rawMs))
     );
     console.log("[READ TIME]", {
@@ -3059,6 +3260,11 @@
   }
   function getRequiredXp(level) {
     return 100 + (level - 1) * 50;
+  }
+  function updateCompletionProgress() {
+    state.percentComplete = Math.round(
+      state.completedPages.size / state.pageIndexMap.length * 100
+    );
   }
   function getLevelUpCoins(level) {
     if (level <= 5) return 5;
@@ -3205,7 +3411,7 @@
     if (!bar) return;
     bar.style.setProperty("--reader-font", state.readerSettings.font);
     bar.style.setProperty("--reader-font-size", state.readerSettings.fontSize + "px");
-    const targets = document.querySelectorAll(".extension-theme");
+    const targets = $$(".extension-theme");
     targets.forEach((el) => {
       el.classList.remove("theme-dark", "theme-light", "theme-forest");
       el.classList.add(state.readerSettings.theme);
@@ -3244,13 +3450,15 @@
               if (data.totalCoinsEarned !== void 0) state.totalCoinsEarned = data.totalCoinsEarned;
               if (data.totalCoinsSpent !== void 0) state.totalCoinsSpent = data.totalCoinsSpent;
               console.log("[LEVEL] Loaded XP + Level:", state.xp, state.level);
+              chrome.storage.local.remove("readerCheckpoint");
               state.sessionStartedAt = Date.now();
               state.allSentences = [];
               state.pageIndexMap = [];
               state.currentChunk = [];
               state.activeElement = null;
               state.currentPage = 0;
-              state.articleTitle = document.title;
+              console.log("[TITLE]", document.title);
+              state.articleTitle = msg.articleTitle || document.title;
               state.articleWordCount = 0;
               state.wordsReadSoFar = 0;
               state.currentPageWords = 0;
@@ -3270,6 +3478,7 @@
               state.sessionNotes = [];
               state.sessionTags = [];
               state.pageXpmap.clear();
+              state.completedPages.clear();
               state.paragraphCache.clear();
               state.pausedAt = null;
               state.isPaused = false;
@@ -3279,7 +3488,7 @@
                 // Persist live session data so popup.js can display statistics even when reopened
                 readingActive: true,
                 sessionStartedAt: state.sessionStartedAt,
-                articleTitle: document.title,
+                articleTitle: state.articleTitle,
                 //coinsGained: 0,
                 sessionXp: 0,
                 wordsReadSoFar: 0,
@@ -3296,12 +3505,6 @@
               if (state.idleIntervalId) {
                 clearInterval(state.idleIntervalId);
               }
-              if (state.autosaveId) {
-                clearInterval(state.autosaveId);
-              }
-              state.autosaveId = setInterval(() => {
-                saveSessionCheckpoint();
-              }, 3e4);
               if (msg.settings) {
                 Object.assign(state.readerSettings, msg.settings);
               }
@@ -3379,16 +3582,13 @@
             clearInterval(state.idleIntervalId);
             state.idleIntervalId = null;
           }
-          if (state.autosaveId) {
-            clearInterval(state.autosaveId);
-            state.autosaveId = null;
-          }
           console.log("[MESSAGING] finish-reader received");
           updateLeveling().then(() => {
             state.sessionStatus = state.percentComplete >= 100 ? "completed" : "in_progress";
             chrome.storage.sync.set({
               readingActive: false
             });
+            chrome.storage.local.remove("readerCheckpoint");
             showSummaryPage();
             sendResponse({ ok: true });
           });
@@ -3431,8 +3631,16 @@
   // content/content.js
   globalThis.browser = globalThis.browser || globalThis.chrome;
   function init() {
-    startObserver();
+    console.log(
+      "[FRAME CHECK]",
+      window.location.href,
+      window === window.top
+    );
+    if (window !== window.top) {
+      return;
+    }
     setupMessaging();
+    console.log("[READER] Running on:", window.location.href);
   }
   init();
 })();

@@ -1,3 +1,14 @@
+// state.js exports a single shared state object that holds:
+// Current article data
+// Reading progress
+// Session information
+// XP and levels
+// Coins
+// Reader settings
+// Pet-related progression data
+// Cached paragraph analysis
+// UI state
+
 // Global shared state for the reader system
 export const state = {
   allSentences: [],
@@ -10,7 +21,6 @@ export const state = {
   timeSpentMs: 0,
   lastInteraction: Date.now(),
   idleIntervalId: null,
-  autosaveId: null,
 
   // Session tracking
   sessionStartedAt: null,
@@ -46,6 +56,7 @@ export const state = {
 
   // Track which paragraphs have already given XP
   pageXpmap: new Set(),
+  completedPages: new Set(),
 
   // Leveling system
   level: 1,

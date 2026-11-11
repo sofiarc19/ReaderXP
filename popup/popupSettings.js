@@ -19,7 +19,14 @@ export function applyPopupTheme(themeName) {
   root.classList.remove(
     "theme-dark",
     "theme-light",
-    "theme-green"
+    "theme-sepia",
+    "theme-dracula",
+    "theme-night",
+    "theme-solarized",
+    "theme-blue",
+    "theme-green",
+    "theme-purple",
+    "theme-pink",
   );
   root.classList.add(themeName);
 }

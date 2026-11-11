@@ -2,7 +2,8 @@ import { initReader, updateReaderPopupStats, updateLifeTimeStats, validateReader
 import {loadPet, renderPet, savePet, careForPet, updatePetUI } from "./pet";
 import { renderShopCategory, renderInventory, updateCoinsUI, spendCoins} from "./shop";
 import { initSessions } from "./popupSession";
-import { api, $, $$ } from "./popupUtils";
+import { $, $$ } from "../content/utils";
+import { api} from "./popupUtils";
 
 async function loadCurrentArticleTitle() {
   const tabs = await new Promise((resolve) => {
@@ -20,7 +21,7 @@ async function loadCurrentArticleTitle() {
     "Unknown Article";
 
   const articleTitle =
-    document.querySelector(".article-title");
+    $(".article-title");
 
   if (articleTitle) {
     articleTitle.textContent = title;
@@ -53,7 +54,25 @@ function initPetUI() {
       });
     });  
    
-
+    $("#savePetName")?.addEventListener("click", () => {
+      const input = document.getElementById("petNameInput");
+      const name = input?.value?.trim();
+    
+      if (!name || name.length < 2) {
+        alert("Please enter a name at least 2 characters long.");
+        return;
+      }
+    
+      loadPet((pet) => {
+        pet.name = name.substring(0, 20);
+        savePet(pet);
+        
+        input.value = "";
+        renderPet(pet);
+        updatePetUI(pet);
+      });
+    });
+      
     $("#openInventory")?.addEventListener("click", () => {
       loadPet((pet) => {
         renderInventory(pet);
@@ -61,6 +80,20 @@ function initPetUI() {
         document.getElementById("inventoryPanel")
           ?.classList.toggle("hidden");
     });
+  });
+
+  document.addEventListener("click", (e) => {
+    const petEffects = $("#petEffects");
+
+    if (petEffects && petEffects.contains(e.target)) {
+      $("#effectsTooltip")?.classList.toggle("visible");
+
+      e.stopPropagation();
+      return;
+    }
+
+    $("#effectsTooltip")
+      ?.classList.remove("visible");
   });
 }
 
@@ -91,8 +124,8 @@ function initShopUI() {
                   freshState.totalCoinsSpent ??= 0;
 
                   renderShopCategory(category, pet, freshState);
-                  $("#shopCategoryLabel").textContent =
-                    `Showing ${category.toLowerCase()} items`;
+                  // $("#shopCategoryLabel").textContent =
+                  //   `Showing ${category.toLowerCase()} items`;
               });
           });
         });

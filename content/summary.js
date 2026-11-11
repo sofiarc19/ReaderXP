@@ -39,16 +39,8 @@ export function showSummaryPage() {
         state.percentComplete
       );
 
-    const multiplier =
-      getMoodCoinMultiplier(pet);
-
-    const finalCoins =
-      Math.max(
-        1,
-        Math.round(
-          sessionCoins * multiplier
-        )
-      );
+    const multiplier = getMoodCoinMultiplier(pet);
+    const finalCoins = Math.max(1, Math.round(sessionCoins * multiplier));
 
     // Track coins earned THIS session
     state.sessionReadingCoins = finalCoins;
@@ -68,22 +60,15 @@ export function showSummaryPage() {
 
     savePet(pet);
 
-    console.log(
-      "[COINS]",
-      {
-        percentComplete:
-          state.percentComplete,
-        baseCoins:
-          sessionCoins,
-        mood:
-          pet.mood,
-        multiplier,
-        finalCoins
-      }
-    );
+    console.log("[COINS]", {
+        percentComplete: state.percentComplete,
+        baseCoins: sessionCoins,
+        mood: pet.mood,
+        multiplier, finalCoins
+      });
 
     // Count the currently visible page if it hasn't
-// already been counted through page navigation.
+    // already been counted through page navigation.
     if (state.currentPage === 0 && state.wordsReadSoFar === 0 &&
       state.currentPageWords > 0) {
       state.wordsReadSoFar = state.currentPageWords;
@@ -154,10 +139,6 @@ export function showSummaryPage() {
 
       <div class="summary-actions">
 
-        <button id="summary-pet-shop">
-          Go To Pet Shop
-        </button>
-
         <button id="summary-close-btn">
           Close
         </button>
@@ -165,6 +146,7 @@ export function showSummaryPage() {
       </div>
 
       <div id="summary-topic-picker" class="hidden"></div>
+    
     `;
     
   document.getElementById("summary-close-btn")
@@ -178,20 +160,6 @@ export function showSummaryPage() {
       document
         .getElementById("reader-area-bar")
         ?.remove();
-    });
-
-    document.getElementById("summary-pet-shop")
-      ?.addEventListener("click", () => {
-
-      toggleBlur();
-
-      document
-        .getElementById("reader-area-bar")
-        ?.remove();
-
-      console.log(
-        "[SUMMARY] Open pet shop later"
-      );
     });
   });
 }

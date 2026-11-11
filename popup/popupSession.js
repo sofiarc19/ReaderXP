@@ -3,14 +3,6 @@ import {loadHistory} from "../content/sessions";
 import {popupSettings} from "./popupSettings";
 
 export function initSessions(){
-    //doesnt do anything atm
-    document
-    .getElementById("refreshHistory")?.addEventListener("click", () => {
-        loadHistory((history) => {
-        console.log("[HISTORY]", history);
-        renderSessionList(history);
-        });
-    });
     document.getElementById("openSessionArticle")
         ?.addEventListener("click", async () => {
 

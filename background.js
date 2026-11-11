@@ -1,18 +1,41 @@
-// Chrome exposes `chrome`; Firefox exposes `browser`. Normalize.
-globalThis.browser = globalThis.browser || globalThis.chrome;
+// Normalize Chrome / Firefox APIs
+const api = globalThis.browser || globalThis.chrome;
 
 let lastSelection = "";
 
-browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.action === "store-selection") {
-    lastSelection = msg.text || "";
-    console.log("[DEBUG] Stored selection:", lastSelection.slice(0, 200));
-    return;
-  }
+// api.runtime.onMessage.addListener(
+//   (msg, sendResponse) => {
+//     switch (msg.action) {
+//       case "store-selection": {
+//         lastSelection = msg.text?.trim() || "";
 
-  if (msg.action === "get-selection") {
-    console.log("[DEBUG] Returning selection:", lastSelection.slice(0, 200));
-    sendResponse({ text: lastSelection });
-    return true;
-  }
-});
+//         console.log(
+//           "[SELECTION] Stored:",
+//           lastSelection.slice(0, 100)
+//         );
+
+//         // sendResponse({ success: true });
+//         return true;
+//       }
+
+//       case "get-selection": {
+//         sendResponse({
+//           text: lastSelection,
+//           hasSelection: !!lastSelection
+//         });
+
+//         return true;
+//       }
+
+//       case "clear-selection": {
+//         lastSelection = "";
+
+//         sendResponse({success: true});
+//         return true;
+//       }
+
+//       default:
+//         return false;
+//     }
+//   }
+// );

@@ -56,6 +56,7 @@
   justify-content: space-between;
   margin-bottom: 10px;
   color: var(--text-muted);
+  font-family: var(--reader-font);
   font-size: 9px;
   font-weight: 600;
 }
@@ -116,19 +117,6 @@
   width: 100%;
   height: 75%;
 }
-
-/* .pet-sprite {
-  width: 96px;
-  height: 100px;
-
-  background-image: url("../popup/assets/cat/Box1.png");
-  background-repeat: no-repeat;
-
-  background-size: auto 96px;
-  background-position: 0 0;
-
-  image-rendering: pixelated;
-} */
 
 .pet-sprite {
   width: 96px;
@@ -228,13 +216,67 @@
   margin-right: 5px;
 }
 
-.petBonus {
+/* Active Effects */
+.pet-effects {
+  position: relative;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
   padding: 4px 7px;
+
   color: var(--accent);
   background: var(--surface-hover);
+
   border-radius: 99px;
   font-size: 8px;
   font-weight: 700;
+  cursor: pointer;
+}
+.effects-tooltip {
+  position: absolute;
+
+  top: calc(100% + 6px);
+  left: 0;
+
+  min-width: 85px;
+
+  background: var(--surface);
+  border: 1px solid var(--border);
+
+  border-radius: 10px;
+
+  padding: 10px;
+
+  color: var(--text);
+
+  box-shadow: var(--shadow);
+
+  z-index: 100;
+
+  display: none;
+}
+.effects-tooltip strong {
+  display: block;
+
+  margin-bottom: 4px;
+
+  color: var(--accent);
+  font-size: 10px;
+}
+
+.pet-effects:hover .effects-tooltip,
+.effects-tooltip.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+.effects-tooltip {
+  display: none;
+}
+.effects-tooltip.visible {
+  display: block;
 }
 
 /* Pet meter */
@@ -359,6 +401,7 @@
   background: var(--surface);
   border: 1px solid transparent;
   border-radius: 7px;
+  font-family: var(--reader-font);
   font-size: 9px;
   font-weight: 600;
   transition: 0.15s ease;
@@ -482,6 +525,7 @@
   transform: scale(0.97);
 }
 #shopMessage {
+  margin-top: 10px;
   padding: 10px;
 
   background: var(--surface-hover);
@@ -696,4 +740,66 @@
 
   border: 1px dashed var(--border);
   border-radius: 7px;
+}
+
+#petNamingPrompt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  margin-bottom: 5px;
+  padding: 8px;
+
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+#petNamingPrompt p {
+  margin: 0;
+
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+#petNameInput {
+  width: 100%;
+  box-sizing: border-box;
+
+  padding: 8px 10px;
+
+  background: var(--background);
+  color: var(--text);
+
+  border: 1px solid var(--border);
+  border-radius: 8px;
+
+  font-size: 12px;
+}
+
+#petNameInput:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+#savePetName {
+  background: var(--surface-hover);
+  color: var(--text);
+
+  border: 1px solid var(--border);
+  border-radius: 8px;
+
+  padding: 8px 12px;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+
+#savePetName:hover {
+  background: var(--accent);
+  color: white;
 }

@@ -1,3 +1,5 @@
+// sessions.js converts active reading activity into saved reading history, 
+// topic-based learning records(WIP), rewards, checkpoints, and session analytics.
 import { state } from "./state";
 // Build a reading session object
 export function buildReadingSession(state) {
@@ -134,7 +136,11 @@ export function saveReadingSession(session) {
           currentPage: session.currentPage,
         })
     }
+    const MAX_SESSION_HISTORY = 20;
 
+    if (currentSession.history?.length > MAX_SESSION_HISTORY) {
+      currentSession.history.length = MAX_SESSION_HISTORY;
+    }
     if (history.length > MAX_HISTORY) {
       history.length = MAX_HISTORY;
     }
@@ -165,13 +171,13 @@ export function loadsessions(callback) {
 // Coin helper: based on words read /500
 // based on progress and amount of words
 export function getSessionCoinReward() {
-  let coins =Math.floor(state.wordsReadSoFar / 500);
+  let coins = Math.floor(state.wordsReadSoFar / 500);
 
   if (state.percentComplete >= 100) {
     coins += 5;
   }
 
-  return Math.max(1, coins);
+  return coins;
 }
 
 export function createTopic(title) {
@@ -271,27 +277,35 @@ export function saveSessionCheckpoint() {
       ? state.pausedAt
       : Date.now();
 
-  state.totalSessionTime =
-    sessionEnd
-    - state.sessionStartedAt
-    - state.totalPausedMs;
+  state.totalSessionTime = sessionEnd -
+    state.sessionStartedAt - state.totalPausedMs;
 
-  const session = buildReadingSession(state);
-  session.isCheckpoint = true;
-  session.coinsGained = 0;
+  const checkpoint = {
+    url: window.location.href,
+    title: document.title,
 
-  session.status =
-    state.percentComplete >= 100
-      ? "completed"
-      : "in_progress";
+    currentPage: state.currentPage,
+    wordsReadSoFar: state.wordsReadSoFar,
 
-  saveReadingSession(session);
+    percentComplete: state.percentComplete,
 
-  console.log(
-    "[CHECKPOINT]",
-    "Page:",
-    session.currentPage + 1,
-    "Progress:",
-    session.percentComplete + "%"
-  );
+    sessionStartedAt: state.sessionStartedAt,
+    totalSessionTime: state.totalSessionTime,
+
+    sessionXp: state.sessionXp,
+
+    savedAt: Date.now()
+  };
+  // Local storage since checkpoints are temporary
+  chrome.storage.local.set(
+    { readerCheckpoint: checkpoint },
+    () => {
+      console.log(
+        "[CHECKPOINT]",
+        "Page:",
+        checkpoint.currentPage + 1,
+        "Progress:",
+        checkpoint.percentComplete + "%"
+      );
+    });
 }

@@ -1,6 +1,6 @@
-import {api, $, $$, getActiveTab, sendMessageToTab, ensureContentScript, sendToReader} from "./popupUtils";
+import {api, getActiveTab, sendMessageToTab, ensureContentScript, sendToReader} from "./popupUtils";
 import {popupSettings, applyPopupStyle, applyPopupTheme} from "./popupSettings"
-import {resumeReadingPage} from "../content/summary"
+import { $, $$ } from "../content/utils";
 
 export function initReader(){
     //Load saved settings (apply to popup UI only — page gets them on Play / change)
@@ -51,7 +51,7 @@ export function initReader(){
         $$(".tab-panel").forEach((panel) =>
         panel.classList.add("hidden")
         );
-        document.querySelector(`.tab-panel[data-panel="${tab}"]`)
+        $(`.tab-panel[data-panel="${tab}"]`)
         ?.classList.remove("hidden");
     });
     });
@@ -175,70 +175,27 @@ export function initReader(){
     }
     );
 
-    // Active Reader Popup
-    $("#reader-pause-popup")
-    ?.addEventListener("click", () => {
-        $("#reader-status").textContent =
-        "Reading paused";
+    $$(".reader-aa").forEach(button => {
+        button.addEventListener("click", () => {
+            console.log("clicked", $(".reader-settings"));
 
-        $("#reader-pause-popup")
-        ?.classList.add("hidden");
+            $("#all-reader-stats")
+                ?.classList.add("hidden");
 
-        $("#reader-resume-popup")
-        ?.classList.remove("hidden");
-
-        sendToReader("pause-reader");
-
-        chrome.storage.sync.set({
-        isPaused: true,
-        pausedAt: Date.now(),
+            $(".reader-settings")
+                ?.classList.toggle("hidden");
         });
     });
 
+    $$(".reader-alltime-stats").forEach(button => {
+        button.addEventListener("click", () => {
 
-    $("#reader-resume-popup")
-    ?.addEventListener("click", () => {
-        $("#reader-status").textContent =
-        "Reading now";
+            $("#all-reader-stats")
+                ?.classList.toggle("hidden");
 
-        $("#reader-resume-popup")
-        ?.classList.add("hidden");
-
-        $("#reader-pause-popup")
-        ?.classList.remove("hidden");
-        resumeReadingPage();
-        sendToReader("resume-reader");
-
-        chrome.storage.sync.set({
-        isPaused: false,
+            $(".reader-settings")
+                ?.classList.add("hidden");
         });
-    });
-
-    $("#reader-finish-popup")
-    ?.addEventListener("click", () => {
-        sendToReader("finish-reader");
-    });
-
-    $("#reader-aa")?.addEventListener("click", () => {
-    document
-        .querySelector(".reader-settings")
-        ?.classList.toggle("hidden");
-
-        // Hide stats if open 
-        document
-        .querySelector("#all-reader-stats")
-        ?.classList.add("hidden");
-    });
-
-    $("#reader-alltime-stats")?.addEventListener("click", () => {
-    document
-        .querySelector("#all-reader-stats")
-    ?.classList.remove("hidden");
-
-    // Hide aa if open 
-    document
-        .querySelector(".reader-settings")
-        ?.classList.add("hidden");
     });
 
     // Close
@@ -281,21 +238,6 @@ export function updateReaderPopupStats() {
         }
         else if (status) {
             status.textContent = statusText;
-        }
-
-        // Keep pause/resume buttons in sync
-        if (data.isPaused) {
-            $("#reader-pause-popup")
-            ?.classList.add("hidden");
-
-            $("#reader-resume-popup")
-            ?.classList.remove("hidden");
-        } else {
-            $("#reader-pause-popup")
-            ?.classList.remove("hidden");
-
-            $("#reader-resume-popup")
-            ?.classList.add("hidden");
         }
 
         const xp = data.sessionXp || 0;
@@ -341,9 +283,6 @@ export function updateReaderPopupStats() {
             "reader-progress-popup"
         ).style.width = `${progress}%`;
          
-        //  document.getElementById(
-        //     "reader-coin-popup"
-        // ).style.width = `${sessionCoins}`;
     });
 }
 
@@ -358,15 +297,15 @@ export function updateLifeTimeStats(){
         (data) => {
             document.getElementById(
                 "reader-current-level"
-            ).textContent = `${data.level}`;
+            ).textContent = `${data.level || 1}`;
 
             document.getElementById(
                 "reader-xp-next"
-            ).textContent = `${data.xp}/${data.required}`;
+            ).textContent = `${data.xp || 0}/${data.required || 100}`;
 
             document.getElementById(
                 "reader-current-coins"
-            ).textContent = `${data.coins}`;
+            ).textContent = `${data.coins || 15}`;
     });
 }
 

@@ -13,6 +13,18 @@ export const PET_ANIMATIONS = {
       frameWidth: 96,
       row: 0
     },
+    box2: {
+      sheet: "Box2.png",
+      frames: 12,
+      frameWidth: 96,
+      row: 0
+    },
+    box3: {
+      sheet: "Box3.png",
+      frames: 4,
+      frameWidth: 96,
+      row: 0
+    },
     sick1: {
       sheet: "catsick1.png",
       frames: 5,
@@ -51,7 +63,7 @@ export const PET_ANIMATIONS = {
     },
     excited: {
       sheet: "Excited.png",
-      frames: 1,
+      frames: 12,
       frameWidth: 96,
       row: 0
     },
@@ -99,11 +111,49 @@ export const PET_ANIMATIONS = {
     },
 
     //Sprite Sheets:
-  //   angry: {
-  //   sheet: "CatSheet.png",
-  //   frames: 10,
-  //   frameWidth: 96,
-  //   frameHeight: 100,
-  //   row: 0
-  // },
+    refusing: {
+      sheet: "AnimationSheet.png",
+      frames: 13,
+      frameWidth: 32,
+      frameHeight: 32,
+      width: 96,
+      height: 96,
+      row: 15
+    },
+    angry: {
+      sheet: "AnimationSheet.png",
+      frames: 10,
+      frameWidth: 32,
+      frameHeight: 32,
+      width: 96,
+      height: 96,
+      row: 16
+    },
+    shy: {
+      sheet: "AnimationSheet.png",
+      frames: 12,
+      frameWidth: 32,
+      frameHeight: 32,
+      width: 96,
+      height: 96,
+      row: 17
+    },
+    annoyed: {
+      sheet: "AnimationSheet.png",
+      frames: 4,
+      frameWidth: 32,
+      frameHeight: 32,
+      width: 96,
+      height: 96,
+      row: 18
+    },
+    paw: {
+      sheet: "AnimationSheet.png",
+      frames: 11,
+      frameWidth: 32,
+      frameHeight: 32,
+      width: 96,
+      height: 96,
+      row: 19
+    },
 };

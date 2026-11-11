@@ -1,4 +1,5 @@
 import { state } from "./state.js";
+import { $$ } from "./utils.js";
 import { nextPage, prevPage, updateLeveling } from "./pagination.js";
 import { showPausedPage, showSummaryPage } from "./summary.js";
 
@@ -47,13 +48,20 @@ export function transformBionic(word) {
 
 // Apply a visual theme to all extension UI elements
 export function applyTheme(themeName) {
-  const targets = document.querySelectorAll(".extension-theme");
+  const targets = $$(".extension-theme");
 
   targets.forEach(el => {
     el.classList.remove(
       "theme-dark",
       "theme-light",
-      "theme-green"
+      "theme-sepia",
+      "theme-dracula",
+      "theme-night",
+      "theme-solarized",
+      "theme-blue",
+      "theme-green",
+      "theme-purple",
+      "theme-pink",
     );
     el.classList.add(themeName);
   });
@@ -205,7 +213,7 @@ export function updateReaderStyle() {
   bar.style.setProperty("--reader-font", state.readerSettings.font);
   bar.style.setProperty("--reader-font-size", state.readerSettings.fontSize + "px");
 
-  const targets = document.querySelectorAll(".extension-theme");
+  const targets = $$(".extension-theme");
   targets.forEach(el => {
     el.classList.remove("theme-dark", "theme-light", "theme-forest");
     el.classList.add(state.readerSettings.theme);

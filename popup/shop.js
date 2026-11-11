@@ -1,4 +1,4 @@
-import { savePet, renderPet, loadPet } from "./pet";
+import { savePet, renderPet, loadPet, updatePetUI } from "./pet";
 import { SHOP_ITEMS } from "./shopItems";
 
 export function buyItem(pet, state, item, quantity = 1) {
@@ -245,6 +245,7 @@ export function renderInventory(pet) {
 
             renderInventory(pet);
             renderPet(pet);
+            updatePetUI(pet);
             details.innerHTML = "<p>Item used!</p>";    
           });
       });

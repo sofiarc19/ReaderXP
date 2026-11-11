@@ -1,5 +1,9 @@
-// content/textExtraction.js
+// Webpage -> Mozilla Readability -> Clean Paragraphs -> Remove Junk
+// -> Split Large Content -> Reader-Ready Paragraph Chunks
+// Mozilla: Identify the actual article. Remove navigation. 
+// Remove sidebars. Remove ads. Remove headers/footers.
 import { Readability } from "@mozilla/readability";
+import { $$ } from "./utils";
 
 // Prevent extraction from pulling text from our own extension UI.
 export function isInsideExtensionUI(el) {
@@ -11,6 +15,7 @@ function splitLargeParagraph(paragraph) {
   const MAX_CHARS = 500;
   const MAX_SENTENCES = 4;
 
+  // Language-aware sentence detection.
   const segmenter = new Intl.Segmenter(
     navigator.language || "en",
     {
@@ -154,7 +159,7 @@ export function extractParagraphs() {
 
     if (!article?.content) {
       console.warn("[READER] Readability failed, falling back.");
-      const fallbackParagraphs = [...document.querySelectorAll(
+      const fallbackParagraphs = [...$$(
         "article p, main p, p"),].map(el => cleanParagraph(el.textContent))
         .filter(p => !isJunkParagraph(p));
 

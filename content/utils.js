@@ -9,18 +9,13 @@ export function $(selector) {
 }
 
 // Shortcut for querySelectorAll
-export function $all(selector) {
+export function $$(selector) {
   return document.querySelectorAll(selector);
 }
 
 // Check if a string is empty or whitespace
 export function isEmpty(str) {
   return !str || str.trim().length === 0;
-}
-
-// Conditional debug logging
-export function debug(...args) {
-  if (window.__DEBUG__) console.log("[DEBUG]", ...args);
 }
 
 // Debounce: delay function execution until user stops triggering it

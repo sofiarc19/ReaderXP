@@ -4,10 +4,6 @@ window.browser = api;
 
 export {api};
 
-// Utility selectors
-export const $ = (sel) => document.querySelector(sel);
-export const $$ = (sel) => document.querySelectorAll(sel);
-
 // Get the currently active browser tab
 export function getActiveTab() {
   return new Promise((resolve) => {

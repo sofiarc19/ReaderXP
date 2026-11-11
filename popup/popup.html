@@ -28,121 +28,129 @@
 
      <!-- READER SETTINGS PANEL -->
     <div class="reader-view tab-panel" data-panel="reader">
-
-        <!-- BEFORE READING STARTS -->
-        <div id="reader-prestart">
-            <div class="reader-ready">
-                <span>Ready to focus? Start reading:</span>
-                <strong class="article-title"></strong>
-                <button class="start-reading-button" id="btn-play">
-                    <span>▶</span>
-                    Start reading
-                </button>
-                <!-- <small>Info</small> -->
-            </div>
-            <div>
-              <label>
-                <span>Reader Settings:</span>
-                <button id="reader-aa">Aa</button>
-              </label>
-              <label>
-                <span>User Stats:</span>
-                <button id="reader-alltime-stats">Info</button>
-              </label>
-            </div>
-            <div class="reader-settings">
-                <label>
-                    <span>Font style</span>
-                    <select id="font-select">
-                        <option value="sans-serif">Sans Serif</option>
-                        <option value="serif">Serif</option>
-                        <option value="Arial">Arial</option>
-                        <option value="Comic Sans MS">Comic Sans MS</option>
-                        <option value="Times New Roman">Times New Roman</option>
-                    </select>
-                </label>
-
-                <label>
-                    <span>Font size</span>
-                    <select id="font-size">
-                        <option value="14">Small</option>
-                        <option value="16" selected>Medium</option>
-                        <option value="18">Large</option>
-                        <option value="20">Extra Large</option>
-                    </select>
-                </label>
-
-                <label>
-                    <span>Color theme</span>
-                    <select id="color-theme">
-                    <option value="theme-dark">Dark</option>
-                    <option value="theme-light">Light</option>
-                    <option value="theme-green">Green</option>
-                    </select>
-                </label>
-
-                <label class="toggle-row">
-                    <span>
-                    <strong>Bionic reading</strong>
-                    <small>Emphasize the start of words</small>
-                    </span>
-                    <button id="set-bionic" class="toggle"><i></i></button>
-                </label>
-            </div>
+      <!-- BEFORE READING STARTS -->
+      <div id="reader-prestart">
+        <div class="reader-ready">
+          <span>Ready to focus? Start reading:</span>
+          <strong class="article-title"></strong>
+          <button class="start-reading-button" id="btn-play">
+            <span>▶</span>
+            Start reading
+          </button>
+          <!-- <small>Info</small> -->
         </div>
-        <!-- Continue previous session -->
-        <div id="reader-previous-sesh" class="hidden">
-          <div class="reader-ready">
-            <span>Want to pick up where you left off?</span>
-            <strong id="resume-title"></strong>
-            <small id="resume-meta">
-              Session details will appear here
-            </small>
-            <button class="start-reading-button" id="btn-continue-reading">
-                <span>▶</span>
-                Continue reading
-            </button>
-          </div>
+        <div>
+          <label>
+            <span>Reader Settings:</span>
+            <button class="reader-aa">Aa</button>
+          </label>
+          <label>
+            <span>User Stats:</span>
+            <button class="reader-alltime-stats">Info</button>
+          </label>
         </div>
-        <!-- AFTER READING STARTS -->
-        <div id="reader-active-popup" class="hidden">
-          <div id="reader-session-head">
-            <span id="reader-status">Reading now</span>
-            <button id="reader-aa">Aa</button>
-          </div>
-
-          <div class="mini-progress">
-            <span id="reader-progress-popup"></span>
-          </div>
-
-          <div class="mini-stats">
-            <div><span>Current Session Stats:</span></div>
-            <div><span>Time: </span><strong id="reader-time-popup"></strong></div>
-            <div><span>Words read: </span><strong id="reader-words-popup"></strong></div>
-            <div><span>XP earned: </span><strong id="reader-xp-popup"></strong></div>
-            <!-- <div><span>Coins earned: </span><strong id="reader-coin-popup"></strong></div> -->
-          </div>
-
-          <div class="reader-session-actions">
-            <button id="reader-pause-popup">Pause reading</button>
-            <button id="reader-resume-popup" class="hidden">Resume</button>
-            <button id="reader-finish-popup">Finish session</button>
-          </div>
+      </div>
+      <!-- Continue previous session -->
+      <div id="reader-previous-sesh" class="hidden">
+        <div class="reader-ready">
+          <span>Want to pick up where you left off?</span>
+          <strong id="resume-title"></strong>
+          <small id="resume-meta"></small>
+          <button class="start-reading-button" id="btn-continue-reading">
+            <span>▶</span>
+            Continue reading
+          </button>
         </div>
-        <!-- User all Time Stats Info -->
-        <!-- WIP -->
-        <div id="all-reader-stats" class="hidden">
-            <strong>Current Stats:</strong>
-            <div><span>Level: </span><strong id="reader-current-level"></strong></div>
-            <div><span>XP: </span><strong id="reader-xp-next"></strong></div>
-            <div><span>Coins: </span><strong id="reader-current-coins"></strong></div>
-            <!-- <strong>User Life time stats (Cummulative total stats):</strong>
-            <div><span>Time: </span><strong id="reader-all-time"></strong></div>
-            <div><span>Words read: </span><strong id="reader-all-words"></strong></div>
-            <div><span>XP earned: </span><strong id="reader-all-xp"></strong></div>
-            <div><span>Coins earned: </span><strong id="reader-all-coins"></strong></div>
-            <div><span>Articles Read: </span><strong id="reader-all-articles"></strong></div> -->
+        <div>
+          <label>
+            <span>Reader Settings:</span>
+            <button class="reader-aa">Aa</button>
+          </label>
+          <label>
+            <span>User Stats:</span>
+            <button class="reader-alltime-stats">Info</button>
+          </label>
         </div>
+      </div>
+      <!-- AFTER READING STARTS -->
+      <div id="reader-active-popup" class="hidden">
+        <div id="reader-session-head">
+          <span id="reader-status">Reading now</span>
+        </div>
+        <div class="mini-progress">
+          <span id="reader-progress-popup"></span>
+        </div>
+        <div class="mini-stats">
+          <div><span>Current Session Stats:</span></div>
+          <div><span>Time: </span><strong id="reader-time-popup"></strong></div>
+          <div><span>Words read: </span><strong id="reader-words-popup"></strong></div>
+          <div><span>XP earned: </span><strong id="reader-xp-popup"></strong></div>
+          <!-- <div><span>Coins earned: </span><strong id="reader-coin-popup"></strong></div> -->
+           <button class="reader-aa">Aa</button>
+        </div>
+        <!-- <div class="reader-session-actions">
+          <button id="reader-pause-popup">Pause reading</button>
+          <button id="reader-resume-popup" class="hidden">Resume</button>
+          <button id="reader-finish-popup">Finish session</button>
+        </div> -->
+      </div>
+      <!-- Reader Settings -->
+      <div class="reader-settings hidden">
+        <label>
+          <span>Font style</span>
+          <select id="font-select">
+            <option value="sans-serif">Sans Serif</option>
+            <option value="serif">Serif</option>
+            <option value="Arial">Arial</option>
+            <option value="Comic Sans MS">Comic Sans MS</option>
+            <option value="Times New Roman">Times New Roman</option>
+          </select>
+        </label>
+        <label>
+          <span>Font size</span>
+          <select id="font-size">
+            <option value="14">Small</option>
+            <option value="16" selected>Medium</option>
+            <option value="18">Large</option>
+            <option value="20">Extra Large</option>
+          </select>
+        </label>
+        <label>
+          <span>Color theme</span>
+          <select id="color-theme">
+            <option value="theme-dark">Dark</option>
+            <option value="theme-light">Light</option>
+            <option value="theme-sepia">Sepia</option>
+            <option value="theme-dracula">Dracula</option>
+            <option value="theme-night">Night</option>
+            <option value="theme-solarized">Solarized</option>
+            <option value="theme-blue">Blue</option>
+            <option value="theme-green">Green</option>
+            <option value="theme-purple">Purple</option>
+            <option value="theme-pink">Pink</option>
+          </select>
+        </label>
+        <label class="toggle-row">
+          <span>
+            <strong>Bionic reading</strong>
+            <small>Emphasize the start of words</small>
+          </span>
+          <button id="set-bionic" class="toggle"><i></i></button>
+        </label>
+      </div>
+      <!-- User all Time Stats Info (WIP) -->
+      <div id="all-reader-stats" class="hidden">
+        <strong>Current Stats:</strong>
+        <div><span>Level: </span><strong id="reader-current-level"></strong></div>
+        <div><span>XP: </span><strong id="reader-xp-next"></strong></div>
+        <div><span>Coins: </span><strong id="reader-current-coins"></strong></div>
+        <!-- <strong>User Life time stats (Cummulative total stats):</strong>
+        <div><span>Time: </span><strong id="reader-all-time"></strong></div>
+        <div><span>Words read: </span><strong id="reader-all-words"></strong></div>
+        <div><span>XP earned: </span><strong id="reader-all-xp"></strong></div>
+        <div><span>Coins earned: </span><strong id="reader-all-coins"></strong></div>
+        <div><span>Articles Read: </span><strong id="reader-all-articles"></strong></div> -->
+      </div>
     </div>
 
     <!-- READING SESSIONS PANEL -->
@@ -154,9 +162,9 @@
           <span>Your saved reading history</span>
         </div>
 
-        <button id="refreshHistory">
+        <!-- <button id="refreshHistory">
           Refresh
-        </button>
+        </button> -->
         <!-- <button id="addTopic">
           Add Topic
         </button> -->
@@ -193,13 +201,10 @@
             </div>
               <span class="petStatus" id="petMood">Main Mood</span>
               <span class="petActivity" id="petActivity">Activity</span>
-              <span class="petBonus" id="petBonus">
-                Bonuses Active
-                <span class="bonus-info">?</span>
-
-                <div id="bonusTooltip"
-                  class="bonus-tooltip">
-                </div>
+              <span class="pet-effects" id="petEffects">
+                <!-- should consider: rewardPetForReading(pet), getMoodCoinMultiplier(pet), getLevelUpCoins(level)?, XP multipliers for rereads? -->
+                Effects Active: 0
+                <div id="effectsTooltip" class="effects-tooltip"></div>
               </span>
             </div>
             <div class="coin-wrapper">
@@ -215,7 +220,11 @@
             </span>
           </div>
         </div>
-
+        <div id="petNamingPrompt" class="hidden">
+          <p>Your pet doesn't have a name yet!</p>
+          <input id="petNameInput" maxlength="20" placeholder="Enter pet name">
+          <button id="savePetName">Name Pet</button>
+        </div>
       <div class="pet-stage">
         <span class="pet-level">Level </span>
         <div class="pet-display">
@@ -315,7 +324,6 @@
       <div id="shopDetails" class="shop-details hidden">
         Select an item to view details.
       </div>
-      <!-- <p id="shopCategoryLabel">Showing food items</p> -->
     </div>
   </section>
   <script src="/dist/popup.js"></script>

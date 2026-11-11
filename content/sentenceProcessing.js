@@ -7,6 +7,7 @@ import { extractAllText } from "./textExtraction.js";
 function segmentSentences(text) {
   if (!text?.trim()) return [];
 
+  // Language-aware sentence detection.
   const segmenter = new Intl.Segmenter(
     navigator.language || "en",
     {

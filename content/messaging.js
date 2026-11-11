@@ -2,7 +2,6 @@ import { extractSentences, extractSentencesFromText } from "./sentenceProcessing
 import { injectReaderArea, updateReaderStyle } from "./readerUI.js";
 import { toggleBlur, blurEnabled } from "./blur.js";
 import { buildPageIndexMap, setActivePage, nextPage, updateLeveling } from "./pagination.js";
-import { saveSessionCheckpoint } from "./sessions.js";
 import { showSummaryPage, showPausedPage} from "./summary.js";
 import { state } from "./state.js";
 
@@ -32,6 +31,7 @@ export function setupMessaging() {
             if (data.totalCoinsSpent !== undefined) state.totalCoinsSpent = data.totalCoinsSpent;
             console.log("[LEVEL] Loaded XP + Level:", state.xp, state.level);
 
+            chrome.storage.local.remove("readerCheckpoint");
             // Start a NEW reading session
             state.sessionStartedAt = Date.now();
             // Reset reader content
@@ -41,7 +41,9 @@ export function setupMessaging() {
             state.activeElement = null;
             state.currentPage = 0;
             // Current article information
-            state.articleTitle = document.title;
+            console.log("[TITLE]", document.title);
+
+            state.articleTitle = msg.articleTitle || document.title;
             state.articleWordCount  = 0;
             // Reading progress
             state.wordsReadSoFar = 0;
@@ -74,6 +76,7 @@ export function setupMessaging() {
             state.sessionTags = [];
             // Reset XP awards for paragraphs
             state.pageXpmap.clear();
+            state.completedPages.clear();
             state.paragraphCache.clear();
 
             // Pause-related tracking
@@ -87,7 +90,7 @@ export function setupMessaging() {
               // Persist live session data so popup.js can display statistics even when reopened
               readingActive: true,
               sessionStartedAt: state.sessionStartedAt,
-              articleTitle: document.title,
+              articleTitle: state.articleTitle,
 
               //coinsGained: 0,
               sessionXp: 0,
@@ -122,15 +125,6 @@ export function setupMessaging() {
             //     );
             //   }
             // }, 5000);
-
-            // Auto-save reading progress every 30 seconds
-            if (state.autosaveId) {
-              clearInterval(state.autosaveId);
-            }
-
-            state.autosaveId = setInterval(() => {
-              saveSessionCheckpoint();
-            }, 30000);
 
             // Apply any reader settings sent from popup
             if (msg.settings) {
@@ -234,10 +228,6 @@ export function setupMessaging() {
           clearInterval(state.idleIntervalId);
           state.idleIntervalId = null;
         }
-        if (state.autosaveId) {
-          clearInterval(state.autosaveId);
-          state.autosaveId = null;
-        }
         console.log("[MESSAGING] finish-reader received");
 
         updateLeveling().then(() => {
@@ -250,6 +240,7 @@ export function setupMessaging() {
           chrome.storage.sync.set({
             readingActive: false,
           });
+        chrome.storage.local.remove("readerCheckpoint");
 
           showSummaryPage();
 

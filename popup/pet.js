@@ -1,7 +1,8 @@
 import { PET_ANIMATIONS } from "./petAnimations";
+import { $ } from "../content/utils";
 // pet.js
 export const DEFAULT_PET = {
-  name: "Pet name",
+  name: null,
 
   hunger: 100,
   mood: 100,
@@ -56,13 +57,12 @@ export function savePet(pet) {
 export function renderPet(pet) {
   // Reader level becomes pet level
   console.log("[PET] Rendering:", pet);
-
   chrome.storage.sync.get(["level", "coins", "xp", "required"],
     (data) => {
       const currentLevel = data.level ?? 1;
       const currentXp = data.xp ?? 0;
       const requiredXp = data.required ?? 100;
-      const stageLevelEl = document.querySelector(".pet-level");
+      const stageLevelEl = $(".pet-level");
 
       if (stageLevelEl) {
         stageLevelEl.textContent = `Level ${currentLevel}`;
@@ -100,16 +100,18 @@ export function renderPet(pet) {
   );
 
   // Pet name
-  const petName = document.querySelector(".pet-title strong");
+  const petName = $(".pet-title strong");
 
-  if (petName) {
-    petName.textContent = pet.name;
-  }
+  if (petName) petName.textContent =pet.name || "Unnamed Pet";
+  const namingPrompt = document.getElementById("petNamingPrompt");
 
+  if (namingPrompt) namingPrompt.classList.toggle("hidden", !!pet.name);
+  
+  
   // Pet mood label
   const mood = document.getElementById("petMood");
 
-  if (mood) {mood.textContent = getPetMood(pet);}
+  if (mood) {mood.textContent = getPetStats(pet);}
 
   // Pet status text
   const status = document.getElementById("petThought");
@@ -130,6 +132,27 @@ export function renderPet(pet) {
     else {
       status.textContent = "Happy and ready to read";
     }
+  }
+
+  // Active effects
+  const effectsEl = document.getElementById("petEffects");
+
+  if (effectsEl) {
+    const effects = getActiveEffects(pet);
+
+    effectsEl.innerHTML = `
+      Effects Active: ${effects.modifierCount}
+      <div id="effectsTooltip" class="effects-tooltip">
+        <strong>Reward Modifiers</strong>
+        ${
+          effects.modifiers.length? effects.modifiers
+            .map(effect => `<div>• ${effect}</div>`)
+            .join(""): "<div>• No active reward modifiers.</div>"
+        }
+        <br>
+        <strong>Pet Effects</strong>
+        ${effects.info.map(effect => `<div>• ${effect}</div>`).join("")}
+      </div>`;
   }
 
   // Show stat percentages in tooltip/title
@@ -162,25 +185,97 @@ function updatePetBar(barId, valueId, value) {
   }
 }
 
-// Purely Emotional/Mood
-function getPetMood(pet) {
-  if (pet.hunger < 25)
-    return "Sick"; // going to be angry 
-  if (pet.energy < 25)
-    return "Tired";
-  if (pet.social < 25)
-    return "Lonely";
-  if (pet.hygiene < 25)
-    return "Uncomfortable";
-  if (pet.mood > 80)
-    return "Happy";
-  if (pet.mood > 50)
+// Get pet mood being changed to get pet thought
+// function getPetMood(pet) {
+//   if (pet.hunger < 25)
+//     return "Sick"; // going to be angry 
+//   if (pet.energy < 25)
+//     return "Tired";
+//   if (pet.social < 25)
+//     return "Lonely";
+//   if (pet.hygiene < 25)
+//     return "Uncomfortable";
+//   if (pet.mood > 80)
+//     return "Happy";
+//   if (pet.mood > 50)
+//     return "Content";
+//   // Pet status text
+//   const status = document.getElementById("petThought");
+
+//   if (status) {
+//     if (pet.hunger < 25) {
+//       status.textContent = "Needs a snack";
+//     }
+//     else if (pet.energy < 25) {
+//       status.textContent = "Feeling sleepy";
+//     }
+//     else if (pet.social < 25) {
+//       status.textContent = "Wants some attention";
+//     }
+//     else if (pet.hygiene < 25) {
+//       status.textContent = "Needs a bath";
+//     }
+//     else {
+//       status.textContent = "Happy and ready to read";
+//     }
+//   }
+
+//   return "Sad";
+// }
+
+function getPetStats(pet){ //Send out why they are the animation they are (what they can do to up the stats )
+  const problems = [];
+
+  // Activities: Happy, Content, Tired, Lonely, Sad, Sick, defualt/idle 
+  const totalStats = pet.hunger + pet.energy + pet.social + pet.hygiene + pet.mood;
+  if (totalStats <= 100){
+      if (pet.hunger <= 10 && pet.energy <= 10 && pet.social <= 10 && pet.hygiene <= 10)
+        return "Neglected";
+      if (totalStats <= 99)
+        return "Sick"; 
+  } else if (totalStats < 300) {
+    // higher chance of returning something other that content at 300
+    if (pet.hunger <= 25) 
+      problems.push("Sad"); // Gonna be angry once that is added 
+    if (pet.energy <= 25)
+      problems.push("Tired");
+    if (pet.social <= 25)
+      problems.push("Lonely");
+    if (pet.hygiene <= 25)
+      problems.push("Uncomfortable");
+    if (pet.mood <= 25) 
+      problems.push("Sad");
+    if (problems.length) {
+      problems.push("Content");
+      return pickRandom(problems);
+    } 
+    
     return "Content";
-  return "Sad";
+  } else if (totalStats < 400) {
+    // small chance of returning anything other than content at 425
+    if (pet.hunger <= 15) 
+      problems.push("Sad"); // Gonna be angry once that is added 
+    if (pet.energy <= 15)
+      problems.push("Tired");
+    if (pet.social <= 15)
+      problems.push("Lonely");
+    if (pet.hygiene <= 15)
+      problems.push("Uncomfortable");
+    if (problems.length) {
+      problems.push("Content");
+      return pickRandom(problems);
+    }
+    return "Content";
+  } else if (totalStats >= 400){
+    return "Happy";
+  } else {
+    return "Content";
+  }
 }
 
+// Pick random activity from base stats
 function rollPetActivity(pet) {
-  const mood = getPetMood(pet);
+  const mood = getPetStats(pet);
   // Update cases and returns 
   switch (mood) {
     case "Happy":
@@ -193,7 +288,11 @@ function rollPetActivity(pet) {
       return pickRandom([
         "Relaxing",
         "Observing",
-        "Box"
+        "Box",
+        "Box2",
+        "Box3",
+        "Shy",
+        "Paw"
       ]);
 
     case "Tired":
@@ -205,7 +304,14 @@ function rollPetActivity(pet) {
     case "Lonely":
       return pickRandom([
         "Waiting",
-        "Looking Around"
+        "Staring",
+      ]);
+
+    case "Mad":
+      return pickRandom([
+        "Angry",
+        "Annoyed",
+        "Refusing"
       ]);
 
     case "Sad":
@@ -216,18 +322,21 @@ function rollPetActivity(pet) {
 
     case "Sick":
       return pickRandom([
-        "Sick",
+        "Life Support",
         "Uncomfortable"
       ]);
 
+    case "Neglected":
+      return "Life Support";
+
     default:
-      return "idle2";
+      return "Content";
   }
 }
 
 function updatePetActivity(pet) {
   const now = Date.now();
-  const mood = getPetMood(pet);
+  const mood = getPetStats(pet);
 
   const moodChanged = pet.currentMood !== mood;
 
@@ -245,7 +354,7 @@ function updatePetActivity(pet) {
 
 export function updatePetUI(pet) {
   updatePetActivity(pet);
-  const mood = getPetMood(pet);
+  const mood = getPetStats(pet);
   const activity = pet.activity;
 
   const moodEl = document.getElementById("petMood");
@@ -280,6 +389,18 @@ export function updatePetUI(pet) {
     case "Box":
       setPetState("box");
       break;
+    case "Box2":
+      setPetState("box2");
+      break;
+    case "Box3":
+      setPetState("box3");
+      break;
+    case "Shy":
+      setPetState("shy");
+      break;
+    case "Paw":
+      setPetState("paw");
+      break;
     // Tired:
     case "Yawning":
       setPetState("sleepy");
@@ -288,7 +409,7 @@ export function updatePetUI(pet) {
       setPetState("sleep");
       break;
     // Lonely:
-    case "Looking Around":
+    case "Staring":
       setPetState("idle");
       break;
     case "Waiting":
@@ -302,16 +423,25 @@ export function updatePetUI(pet) {
       setPetState("cry");
       break;
     // Sick:
-    case "Sick":
+    case "Life Support":
       setPetState("sick1");
       break;
     case "Uncomfortable":
       setPetState("sick2");
       break;
+     case "Neglected":
+      setPetState("dead");
+      break;
     // Mad:
-    // case "Mad":
-    //   setPetState("angry");
-    //   break;
+    case "Angry":
+      setPetState("angry");
+      break;
+    case "Annoyed":
+      setPetState("annoyed");
+      break;
+    case "Refusing":
+      setPetState("refusing");
+      break;
     // Other:
     case "Eating":
       setPetState("eating");
@@ -319,11 +449,9 @@ export function updatePetUI(pet) {
     case "Surprised":
       setPetState("surprised");
       break;
-    case "Negelected":
-      setPetState("dead");
-      break;
   }
-  console.log("[PET]", "Mood:", mood, "Activity:", activity);}
+  console.log("[PET]", "Mood:", mood, "Activity:", activity);
+}
 
 export function setPetState(state) {
   startPetAnimation(state);
@@ -339,6 +467,7 @@ export function startPetAnimation(
   const config = PET_ANIMATIONS[animation];
 
   if (!config) return;
+  if (!config.frames) return;
 
   if (animationInterval) {
     clearInterval(animationInterval);
@@ -348,26 +477,52 @@ export function startPetAnimation(
 
   petSprite.style.width = `${config.width ?? 96}px`;
 
-  petSprite.style.height = `${config.height ?? 100}px`;
+  petSprite.style.height = `${config.height ?? 96}px`;
+
+  const frameWidth = config.frameWidth ?? 96;
+  const frameHeight = config.frameHeight ?? 96;
+  const row = config.row ?? 0;
+  const startFrame = config.startFrame ?? 0;
+
+  let scale = 1;
+
+  // Multi-animation sheet
+  if (config.sheet === "AnimationSheet.png") {
+    scale = 3;
+
+    petSprite.style.backgroundSize =
+      `${512 * scale}px ${800 * scale}px`;
+  } else {
+    petSprite.style.backgroundSize = "";
+  }
 
   let frame = 0;
 
-  const frameWidth = config.frameWidth ?? 96;
-  const frameHeight = config.frameHeight ?? 100;
-  const row = config.row ?? 0;
-  const startFrame = config.startFrame ?? 0;
+  // Show first frame immediately
+  const initialX = startFrame * frameWidth * scale;
+  const initialY = row * frameHeight * scale;
+
+  petSprite.style.backgroundPosition = `-${initialX}px -${initialY}px`;
 
   animationInterval = setInterval(() => {
     const currentFrame = startFrame + frame;
 
-    const x = currentFrame * frameWidth;
-
-    const y = row * frameHeight;
+    const x = currentFrame * frameWidth * scale;
+    const y = row * frameHeight * scale;
 
     petSprite.style.backgroundPosition = `-${x}px -${y}px`;
 
     frame = (frame + 1) % config.frames;
   }, 150);
+
+  console.log("[PET]", {
+    animation,
+    row,
+    frameWidth,
+    frameHeight,
+    startFrame,
+    frames: config.frames
+  });
 }
 
 export function updatePetDecay(pet) {
@@ -394,8 +549,9 @@ export function updatePetDecay(pet) {
   pet.lastUpdated = now;
 }
 
+// Button that raises these  stats
 export const CARE_PRICE = 10;
-// Temp button that raises these  stats
+
 export function careForPet(pet) {
   if (pet.dailyCareUses <= 0) {
     return {
@@ -410,13 +566,30 @@ export function careForPet(pet) {
   pet.hygiene = Math.min(100, pet.hygiene + 10);
   pet.energy = Math.min(100, pet.energy + 10);
   pet.social = Math.min(100, pet.social + 10);
-  pet.mood = Math.min(100, pet.mood + 3);
+  pet.mood = Math.min(100, pet.mood + 10);
 
   return {
     success: true,
     price: CARE_PRICE
   };
 }
+
+export function resetDailyCare(pet) {
+  const now = Date.now();
+
+  const lastReset = new Date(pet.lastCareReset || now);
+  const today = new Date(now);
+
+  const isNewDay =
+    lastReset.toDateString() !==
+    today.toDateString();
+
+  if (isNewDay) {
+    pet.dailyCareUses = 3;
+    pet.lastCareReset = now;
+  }
+}
+
 
 //Reward raise certain stats after user reads:
 //Pet gains happiness + social + energy because the user read
@@ -445,22 +618,6 @@ export function resetDailyRewards(pet) {
   }
 }
 
-export function resetDailyCare(pet) {
-  const now = Date.now();
-
-  const lastReset = new Date(pet.lastCareReset || now);
-  const today = new Date(now);
-
-  const isNewDay =
-    lastReset.toDateString() !==
-    today.toDateString();
-
-  if (isNewDay) {
-    pet.dailyCareUses = 3;
-    pet.lastCareReset = now;
-  }
-}
-
 //Helper for coins, mood adds or decreases amount fo coins earned 
 export function getMoodCoinMultiplier(pet) {
   if (pet.mood >= 80) {
@@ -473,6 +630,42 @@ export function getMoodCoinMultiplier(pet) {
     return 0.90;
   }
   return 0.80;
+}
+
+export function getActiveEffects(pet) {
+  const modifiers = [];
+  const info = [];
+
+  const coinMultiplier = getMoodCoinMultiplier(pet);
+
+  if (coinMultiplier > 1) {
+    modifiers.push("Happy Mood (+20% Coin Rewards)");
+  }
+
+  if (coinMultiplier < 1) {
+    modifiers.push(
+      `Low Mood (-${Math.round((1 - coinMultiplier) * 100)}% Coin Rewards)`
+    );
+  }
+
+  info.push(`Reading sessions grant +1 Mood and +1 Social`);
+
+  info.push(`Daily Reading Rewards Remaining: ${
+      MAX_DAILY_READING_REWARDS - pet.dailyReadingRewards
+    }/${MAX_DAILY_READING_REWARDS}`
+  );
+
+  return {
+    modifierCount: modifiers.length,
+    modifiers,
+    info
+  };
+}
+
+function pickRandom(items) {
+  return items[
+    Math.floor(Math.random() * items.length)
+  ];
 }
 
 // Helper
@@ -498,8 +691,18 @@ window.inspectSprite = (file, frames) => {
   };
 };
 
-function pickRandom(items) {
-  return items[
-    Math.floor(Math.random() * items.length)
-  ];
-}
+// Animation test 
+window.testPetAnimation = (animation) => {
+  console.log("Testing animation:", animation);
+  setPetState(animation);
+}; // Just run: testPetAnimation("box3");
+
+//Configured animations 
+window.listPetAnimations = () => {
+  console.table(Object.keys(PET_ANIMATIONS));
+  const img = new Image();
+img.src = "assets/cat/AnimationSheet.png";
+img.onload = () => {
+  console.log(img.width, img.height);
+};
+}; //run: listPetAnimations();
