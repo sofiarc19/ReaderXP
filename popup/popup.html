@@ -21,7 +21,7 @@
     <!-- Tabs -->
     <div class="popover-tabs" role="tablist" aria-label="Companion views">
       <button class="active" role="tab" data-tab="reader">Reader</button>
-      <button role="tab" data-tab="sessions">Reading sessions</button>
+      <button role="tab" data-tab="sessions">Reading Sessions</button>
       <button role="tab" data-tab="pet">Pet</button>
       <button role="tab" data-tab="shop">Shop</button>
     </div>
@@ -109,6 +109,7 @@
         <label>
           <span>Font size</span>
           <select id="font-size">
+            <option value="12">Extra Small</option>
             <option value="14">Small</option>
             <option value="16" selected>Medium</option>
             <option value="18">Large</option>
@@ -118,8 +119,8 @@
         <label>
           <span>Color theme</span>
           <select id="color-theme">
-            <option value="theme-dark">Dark</option>
             <option value="theme-light">Light</option>
+            <option value="theme-dark">Dark</option>
             <option value="theme-sepia">Sepia</option>
             <option value="theme-dracula">Dracula</option>
             <option value="theme-night">Night</option>
@@ -195,19 +196,21 @@
         <div class="pet-title">
           <div>
             <strong>Pet</strong>
-            <!-- <div id="petThought" class="pet-thought hidden">
-              💭 Hungry
-            </div> -->
             </div>
-              <span class="petStatus" id="petMood">Main Mood</span>
-              <span class="petActivity" id="petActivity">Activity</span>
-              <span class="pet-effects" id="petEffects">
-                <!-- should consider: rewardPetForReading(pet), getMoodCoinMultiplier(pet), getLevelUpCoins(level)?, XP multipliers for rereads? -->
-                Effects Active: 0
-                <div id="effectsTooltip" class="effects-tooltip"></div>
-              </span>
-            </div>
-            <div class="coin-wrapper">
+            <span class="petStatus tooltip-parent" id="petMood">
+              <span class="pet-label"></span>
+              <div class="pet-tooltip" id="moodTooltip"></div>
+            </span>
+            <span class="petActivity tooltip-parent" id="petActivity">
+              <span class="pet-label"></span>
+              <div class="pet-tooltip" id="activityTooltip"></div>
+            </span>
+            <span class="pet-effects" id="petEffects">
+              Effects Active: 0
+              <div id="effectsTooltip" class="effects-tooltip"></div>
+            </span>
+          </div>
+          <div class="coin-wrapper">
             <span class="coin-count">
               <i>$</i>
               <span id="petCoins">0</span>
@@ -218,7 +221,7 @@
                 <br>• Leveling up
               </div>
             </span>
-          </div>
+        </div>
         </div>
         <div id="petNamingPrompt" class="hidden">
           <p>Your pet doesn't have a name yet!</p>

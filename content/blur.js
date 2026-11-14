@@ -22,10 +22,36 @@ export function toggleBlur() {
   }
 }
 
+
 export function startObserver() {
-  // Future placeholder for:
-  // Detect navigation changes
-  // Restore Reader UI
-  // Reapply blur mode
-  // Save checkpoints
+  function attachObserver() {
+      // Wait until <body> exists before attaching the observer
+    if (!document.body) {
+      // Try again shortly
+      setTimeout(attachObserver, 50);
+      return;
+    }
+
+    let scheduled = false;
+    // Watch for DOM changes
+    const observer = new MutationObserver(() => {
+      // Prevent rapid repeated triggers
+      if (scheduled) return;
+      scheduled = true;
+
+      // Debounce mutation handling
+      setTimeout(() => {
+        scheduled = false;
+      }, 100);
+    });
+
+    // Observe additions/removals anywhere in the document
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+  }
+
+  // Begin observer setup
+  attachObserver();
 }

@@ -1,7 +1,7 @@
 // Popup UI settings (synced to storage)
 export const popupSettings = {
   font: "sans-serif",
-  fontSize: 16,
+  fontSize: 14,
   theme: "theme-light",
   bionic: false,
 };
@@ -17,8 +17,8 @@ export function applyPopupStyle() {
 export function applyPopupTheme(themeName) {
   const root = document.documentElement;
   root.classList.remove(
-    "theme-dark",
     "theme-light",
+    "theme-dark",
     "theme-sepia",
     "theme-dracula",
     "theme-night",

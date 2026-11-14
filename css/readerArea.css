@@ -1,5 +1,3 @@
-@import "../css/themes.css";
-
 /* BASE READER AREA STRUCTURE  */
 #reader-area-bar * {
   box-sizing: border-box;
@@ -130,7 +128,7 @@
   border-radius: 7px;
 
   color: var(--text);
-  font-size: 10px;
+  font-size: calc(var(--reader-font-size) * 0.85);
   font-weight: 600;
 }
 
@@ -145,7 +143,7 @@
   border: 1px solid var(--border);
   border-radius: 7px;
 
-  font-size: 9px;
+  font-size: calc(var(--reader-font-size) * 0.8);
   font-weight: 600;
 
   cursor: pointer;
@@ -211,7 +209,7 @@
   font-weight: 700;
   line-height: 1.3;
   color: var(--text-muted);
-  font-size: 22px;
+  font-size: calc(var(--reader-font-size) * 1.4);
 }
 
 #reader-summary .summary-header p {
@@ -237,11 +235,11 @@
 
   color: var(--text-muted);
 
-  font-size: 12px;
+  font-size: calc(var(--reader-font-size) * 0.85);
 }
 
 #reader-summary .summary-stat strong {
-  font-size: 16px;
+  font-size: calc(var(--reader-font-size) * 1.1);
 }
 
 #reader-summary .summary-actions {
@@ -264,7 +262,7 @@
   border-color: var(--accent);
   border-radius: 7px;
 
-  font-size: 10px;
+  font-size: calc(var(--reader-font-size) * 0.8);
   font-weight: 600;
 
   cursor: pointer;
@@ -299,12 +297,14 @@
 
 .paused-content h1 {
   margin: 0;
-  font-size: 22px;
+  font-size: calc(var(--reader-font-size) * 1.4);
   color: var(--text);
 }
 
 .paused-content p {
   margin: 0;
+
+   font-size: calc(var(--reader-font-size) * 0.95);
   color: var(--text-muted);
 }
 
@@ -340,7 +340,7 @@
   border: 1px solid var(--border);
   border-radius: 7px;
 
-  font-size: 10px;
+  font-size: calc(var(--reader-font-size) * 0.8);
   font-weight: 700;
 
   transition: 0.15s ease;
@@ -363,7 +363,7 @@
   border-radius: 7px;
 
   font-family: var(--reader-font);
-  font-size: 10px;
+  font-size: calc(var(--reader-font-size) * 0.8);
   font-weight: 700;
 
   transition: 0.15s ease;
@@ -507,7 +507,7 @@
   --text: #567882;
   --text-muted: #839496;
     
-  -accent: #364b9a;
+  --accent: #364b9a;
   --accent-hover: #1e76b3;
   
   --progress-bg: #bbb299;
@@ -568,7 +568,7 @@
   --progress-bg: #403566;
   --progress-fill:#c581e0;
 }
-}
+
 .theme-pink {
   --bg: #fff1f5;
 

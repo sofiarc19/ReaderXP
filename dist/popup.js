@@ -73,7 +73,7 @@
   // popup/popupSettings.js
   var popupSettings = {
     font: "sans-serif",
-    fontSize: 16,
+    fontSize: 14,
     theme: "theme-light",
     bionic: false
   };
@@ -85,8 +85,8 @@
   function applyPopupTheme(themeName) {
     const root = document.documentElement;
     root.classList.remove(
-      "theme-dark",
       "theme-light",
+      "theme-dark",
       "theme-sepia",
       "theme-dracula",
       "theme-night",
@@ -591,52 +591,67 @@
       }
     );
     const petName = $(".pet-title strong");
-    if (petName) petName.textContent = pet.name || "Unnamed Pet";
-    const namingPrompt = document.getElementById("petNamingPrompt");
-    if (namingPrompt) namingPrompt.classList.toggle("hidden", !!pet.name);
-    const mood = document.getElementById("petMood");
-    if (mood) {
-      mood.textContent = getPetStats(pet);
+    if (petName) {
+      petName.textContent = pet.name || "Unnamed Pet";
     }
-    const status = document.getElementById("petThought");
-    if (status) {
-      if (pet.hunger < 25) {
-        status.textContent = "Needs a snack";
-      } else if (pet.energy < 25) {
-        status.textContent = "Feeling sleepy";
-      } else if (pet.social < 25) {
-        status.textContent = "Wants some attention";
-      } else if (pet.hygiene < 25) {
-        status.textContent = "Needs a bath";
-      } else {
-        status.textContent = "Happy and ready to read";
+    const namingPrompt = document.getElementById("petNamingPrompt");
+    if (namingPrompt) {
+      namingPrompt.classList.toggle("hidden", !!pet.name);
+    }
+    const mood = getPetStats(pet);
+    const moodEl = document.getElementById("petMood");
+    if (moodEl) {
+      const label = moodEl.querySelector(".pet-label");
+      if (label) {
+        label.textContent = mood;
       }
+    }
+    const moodTooltip = document.getElementById("moodTooltip");
+    if (moodTooltip) {
+      moodTooltip.innerHTML = `
+      <strong>${mood}</strong>
+      ${getPetGuidance(pet)}<br><br>
+
+      <strong>Stats: </strong>
+      Hunger: ${Math.round(pet.hunger)}%<br>
+      Energy: ${Math.round(pet.energy)}%<br>
+      Social: ${Math.round(pet.social)}%<br>
+      Hygiene: ${Math.round(pet.hygiene)}%<br>
+      Mood: ${Math.round(pet.mood)}%
+    `;
+    }
+    const activityEl = document.getElementById("petActivity");
+    if (activityEl) {
+      const label = activityEl.querySelector(".pet-label");
+      if (label) {
+        label.textContent = pet.activity || "Idle";
+      }
+    }
+    const activityTooltip = document.getElementById("activityTooltip");
+    if (activityTooltip) {
+      activityTooltip.innerHTML = `
+      <strong>${pet.activity || "Idle"}</strong><br>
+      ${getActivityDescription(pet.activity)}
+    `;
     }
     const effectsEl = document.getElementById("petEffects");
     if (effectsEl) {
       const effects = getActiveEffects(pet);
       effectsEl.innerHTML = `
-      Effects Active: ${effects.modifierCount}
-      <div id="effectsTooltip" class="effects-tooltip">
-        <strong>Reward Modifiers</strong>
-        ${effects.modifiers.length ? effects.modifiers.map((effect) => `<div>\u2022 ${effect}</div>`).join("") : "<div>\u2022 No active reward modifiers.</div>"}
-        <br>
-        <strong>Pet Effects</strong>
-        ${effects.info.map((effect) => `<div>\u2022 ${effect}</div>`).join("")}
-      </div>`;
+    Effects Active: ${effects.modifierCount}
+    <div id="effectsTooltip" class="effects-tooltip">
+      <strong>Reward Modifiers</strong>
+      ${effects.modifiers.length ? effects.modifiers.map((effect) => `<div>\u2022 ${effect}</div>`).join("") : "<div>\u2022 No active reward modifiers.</div>"}
+      <br>
+      <strong>Pet Effects</strong>
+      ${effects.info.length ? effects.info.map((effect) => `<div>\u2022 ${effect}</div>`).join("") : "<div>\u2022 No active pet effects.</div>"}
+    </div>`;
     }
     updatePetBar("pet-hunger-bar", "pet-hunger-value", pet.hunger);
     updatePetBar("pet-mood-bar", "pet-mood-value", pet.mood);
     updatePetBar("pet-hygiene-bar", "pet-hygiene-value", pet.hygiene);
     updatePetBar("pet-social-bar", "pet-social-value", pet.social);
     updatePetBar("pet-energy-bar", "pet-energy-value", pet.energy);
-    mood?.setAttribute(
-      "title",
-      `Hunger: ${Math.round(pet.hunger)}%
-    Energy: ${Math.round(pet.energy)}%
-    Social: ${Math.round(pet.social)}%
-    Hygiene: ${Math.round(pet.hygiene)}%`
-    );
   }
   function updatePetBar(barId, valueId, value) {
     const bar = document.getElementById(barId);
@@ -649,49 +664,112 @@
       label.textContent = `${rounded}%`;
     }
   }
+  function getPetGuidance(pet) {
+    const mood = getPetStats(pet);
+    const lowest = [
+      { name: "hunger", value: pet.hunger },
+      { name: "energy", value: pet.energy },
+      { name: "social", value: pet.social },
+      { name: "hygiene", value: pet.hygiene },
+      { name: "mood", value: pet.mood }
+    ].sort((a, b) => a.value - b.value)[0];
+    switch (mood) {
+      case "Happy":
+        return "Your pet is thriving. Keep reading and caring for it to maintain its happiness.";
+      case "Content":
+        return `Your pet is content, but ${lowest.name} is at ${Math.round(lowest.value)}% and may need attention soon.`;
+      case "Tired":
+        return "Your pet is low on energy and could use some rest or an energy-boosting item.";
+      case "Lonely":
+        return "Your pet feels lonely and would enjoy some attention.";
+      case "Mad":
+        return "Your pet is hungry and becoming frustrated. A snack would improve its mood.";
+      case "Sad":
+        return "Your pet's overall mood is low. Caring for it or improving its needs should help.";
+      case "Sick":
+        return "Several of your pet's needs are critically low. It needs immediate care.";
+      case "Neglected":
+        return "Your pet has been neglected for too long. Multiple needs are at low levels.";
+      default:
+        return "Your pet is observing the world around it.";
+    }
+  }
+  function getActivityDescription(activity) {
+    const descriptions = {
+      Dancing: "Your pet is full of energy and celebrating.",
+      Excited: "Something has your pet feeling especially happy.",
+      Relaxing: "Your pet is taking it easy.",
+      Observing: "Your pet is watching the world around it.",
+      Sleeping: "Your pet is recovering energy.",
+      Yawning: "Your pet is getting sleepy.",
+      Waiting: "Your pet is hoping for attention.",
+      Staring: "Your pet seems lonely.",
+      Crying: "Your pet is feeling down.",
+      Moping: "Your pet isn't having a great day.",
+      Angry: "Your pet is frustrated by unmet needs.",
+      Annoyed: "Something is bothering your pet.",
+      Refusing: "Your pet is unhappy and doesn't want to cooperate.",
+      "Life Support": "Your pet is in very poor condition and needs help immediately."
+    };
+    return descriptions[activity] ?? "Your pet is doing its own thing.";
+  }
   function getPetStats(pet) {
     const problems = [];
     const totalStats = pet.hunger + pet.energy + pet.social + pet.hygiene + pet.mood;
     if (totalStats <= 100) {
       if (pet.hunger <= 10 && pet.energy <= 10 && pet.social <= 10 && pet.hygiene <= 10)
         return "Neglected";
-      if (totalStats <= 99)
-        return "Sick";
-    } else if (totalStats < 300) {
-      if (pet.hunger <= 25)
-        problems.push("Sad");
-      if (pet.energy <= 25)
+      return "Sick";
+    } else if (totalStats < 250) {
+      if (pet.hunger <= 50)
+        problems.push("Mad");
+      if (pet.energy <= 50)
         problems.push("Tired");
-      if (pet.social <= 25)
+      if (pet.social <= 50)
         problems.push("Lonely");
-      if (pet.hygiene <= 25)
+      if (pet.hygiene <= 50)
         problems.push("Uncomfortable");
-      if (pet.mood <= 25)
+      if (pet.mood <= 50)
+        problems.push("Sad");
+      if (problems.length) {
+        return pickRandom(problems);
+      }
+      return "Content";
+    } else if (totalStats <= 300) {
+      if (pet.hunger <= 30)
+        problems.push("Mad");
+      if (pet.energy <= 30)
+        problems.push("Tired");
+      if (pet.social <= 30)
+        problems.push("Lonely");
+      if (pet.hygiene <= 30)
+        problems.push("Uncomfortable");
+      if (pet.mood <= 30)
         problems.push("Sad");
       if (problems.length) {
         problems.push("Content");
         return pickRandom(problems);
       }
       return "Content";
-    } else if (totalStats < 400) {
+    } else if (totalStats < 425) {
       if (pet.hunger <= 15)
-        problems.push("Sad");
+        problems.push("Mad");
       if (pet.energy <= 15)
         problems.push("Tired");
       if (pet.social <= 15)
         problems.push("Lonely");
       if (pet.hygiene <= 15)
         problems.push("Uncomfortable");
+      if (pet.mood <= 15)
+        problems.push("Sad");
       if (problems.length) {
         problems.push("Content");
         return pickRandom(problems);
       }
       return "Content";
-    } else if (totalStats >= 400) {
-      return "Happy";
-    } else {
-      return "Content";
     }
+    if (totalStats >= 425)
+      return "Happy";
   }
   function rollPetActivity(pet) {
     const mood = getPetStats(pet);
@@ -725,7 +803,8 @@
         return pickRandom([
           "Angry",
           "Annoyed",
-          "Refusing"
+          "Refusing",
+          "Uncomfortable"
         ]);
       case "Sad":
         return pickRandom([
@@ -734,11 +813,8 @@
         ]);
       case "Sick":
         return pickRandom([
-          "Life Support",
-          "Uncomfortable"
+          "Life Support"
         ]);
-      case "Neglected":
-        return "Life Support";
       default:
         return "Content";
     }
@@ -759,13 +835,25 @@
     updatePetActivity(pet);
     const mood = getPetStats(pet);
     const activity = pet.activity;
-    const moodEl = document.getElementById("petMood");
-    const activityEl = document.getElementById("petActivity");
-    if (moodEl) {
-      moodEl.textContent = mood;
+    const moodTooltip = document.getElementById("moodTooltip");
+    if (moodTooltip) {
+      moodTooltip.innerHTML = `
+      <strong>${mood}</strong>
+      ${getPetGuidance(pet)}<br><br>
+      <strong>Stats:</strong>
+      Hunger: ${Math.round(pet.hunger)}%<br>
+      Energy: ${Math.round(pet.energy)}%<br>
+      Social: ${Math.round(pet.social)}%<br>
+      Hygiene: ${Math.round(pet.hygiene)}%<br>
+      Mood: ${Math.round(pet.mood)}%
+    `;
     }
-    if (activityEl) {
-      activityEl.textContent = activity;
+    const activityTooltip = document.getElementById("activityTooltip");
+    if (activityTooltip) {
+      activityTooltip.innerHTML = `
+      <strong>${activity || "Idle"}</strong><br>
+      ${getActivityDescription(activity)}
+    `;
     }
     switch (activity) {
       default:

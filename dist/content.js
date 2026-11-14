@@ -2845,6 +2845,27 @@
       if (bar) bar.remove();
     }
   }
+  function startObserver() {
+    function attachObserver() {
+      if (!document.body) {
+        setTimeout(attachObserver, 50);
+        return;
+      }
+      let scheduled = false;
+      const observer = new MutationObserver(() => {
+        if (scheduled) return;
+        scheduled = true;
+        setTimeout(() => {
+          scheduled = false;
+        }, 100);
+      });
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    }
+    attachObserver();
+  }
 
   // content/summary.js
   function showSummaryPage() {
@@ -2926,7 +2947,8 @@
           <div class="summary-inline">
             <strong>+${session.xpGained} XP |</strong>
             <strong>Level: ${state.level} |</strong>
-            <strong>Current XP: ${state.xp} / ${state.required}</strong>
+            <strong>Current XP: ${state.xp} / ${state.required} |</strong>
+          <strong>Progress: ${(session.percentComplete || 0).toFixed(1)}%</strong>
           </div>
         </div>
 
@@ -2946,12 +2968,6 @@
           <strong>Time Reading: ${formattedTime}</strong>
           </div>
         </div>
-
-        <div class="summary-stat">
-          <span>Progress</span>
-          <strong>${(session.percentComplete || 0).toFixed(1)}%</strong>
-        </div>
-
       </div>
 
       <div class="summary-actions">
@@ -3639,6 +3655,7 @@
     if (window !== window.top) {
       return;
     }
+    startObserver();
     setupMessaging();
     console.log("[READER] Running on:", window.location.href);
   }

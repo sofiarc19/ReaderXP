@@ -4,7 +4,7 @@
   align-items: center;
   gap: 5px;
   color: #7b622a;
-  font-size: 10px;
+  font-size: calc(var(--reader-font-size) * 0.8);
   font-weight: 700;
 }
 .coin-count i {
@@ -17,7 +17,7 @@
   border: 1px solid #e5b841;
   border-radius: 50%;
   font-style: normal;
-  font-size: 9px;
+  font-size: calc(var(--reader-font-size) * 0.75);
 }
 .coin-wrapper {
   position: relative;
@@ -36,7 +36,7 @@
   border: 1px solid #d9c27a;
   border-radius: 6px;
 
-  font-size: 10px;
+  font-size: calc(var(--reader-font-size) * 0.8);
   line-height: 1.4;
 
   display: none;
@@ -57,8 +57,8 @@
   margin-bottom: 10px;
   color: var(--text-muted);
   font-family: var(--reader-font);
-  font-size: 9px;
-  font-weight: 600;
+  font-size: calc(var(--reader-font-size) * 0.8);
+  font-weight: 400;
 }
 
 /* Pet stage */
@@ -88,15 +88,9 @@
   color: #6870cb;
   background: rgba(255,255,255,.8);
   border-radius: 5px;
-  font-size: 8.5px;
+  font-size: calc(var(--reader-font-size) * 0.75);
   font-weight: 700;
 }
-/* .pet-art {
-  width: 170px;
-  height: 142px;
-  z-index: 1;
-  align-self: end;
-} */
 .pet-display {
   position: relative;
   z-index: 1;
@@ -184,36 +178,86 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  /* margin-top: 12px; */
 }
 .pet-title > div { display: grid; gap: 2px; }
 .pet-title strong {
   color: var(--text);
-  font-size: 14px;
+  font-size: calc(var(--reader-font-size) * 1);
 }
 .pet-title div span {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: calc(var(--reader-font-size) * 0.8);
 }
-.petStatus {
+.petStatus,
+.petActivity {
+  position: relative;
+
   padding: 4px 7px;
+
   color: var(--accent);
   background: var(--surface-hover);
+
   border-radius: 99px;
-  font-size: 8px;
+
+  font-size: calc(var(--reader-font-size) * 0.75);
   font-weight: 700;
+}
+.petStatus {
   margin-left: 10px;
   margin-right: 5px;
 }
-
 .petActivity {
-  padding: 4px 7px;
-  color: var(--accent);
-  background: var(--surface-hover);
-  border-radius: 99px;
-  font-size: 8px;
-  font-weight: 700;
   margin-right: 5px;
+}
+
+.tooltip-parent {
+  position: relative;
+  cursor: help;
+}
+
+/* Mood + Activity Tooltips */
+.pet-tooltip {
+  position: absolute;
+
+  top: calc(100% + 6px);
+  left: 0;
+
+  min-width: 100px;
+  max-width: 260px;
+
+  padding: 10px;
+
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+
+  color: var(--text);
+  font-size: calc(var(--reader-font-size) * 0.8);
+  font-weight: 700;
+
+  box-shadow: var(--shadow);
+
+  z-index: 200;
+
+  display: none;
+
+  white-space: normal;
+  text-align: left;
+}
+
+.pet-tooltip strong {
+  display: block;
+
+  margin-bottom: 4px;
+
+  color: var(--accent);
+  font-size: calc(var(--reader-font-size) * 0.85);
+  font-weight: 700;
+}
+
+.tooltip-parent:hover .pet-tooltip,
+.tooltip-parent:focus-within .pet-tooltip {
+  display: block;
 }
 
 /* Active Effects */
@@ -230,7 +274,7 @@
   background: var(--surface-hover);
 
   border-radius: 99px;
-  font-size: 8px;
+  font-size: calc(var(--reader-font-size) * 0.75);
   font-weight: 700;
   cursor: pointer;
 }
@@ -263,7 +307,7 @@
   margin-bottom: 4px;
 
   color: var(--accent);
-  font-size: 10px;
+  font-size: calc(var(--reader-font-size) * 0.8);
 }
 
 .pet-effects:hover .effects-tooltip,
@@ -285,11 +329,11 @@
   display: flex;
   justify-content: space-between;
   color: var(--text-muted);
-  font-size: 8.5px;
+  font-size: calc(var(--reader-font-size) * 0.75);
 }
 .pet-meter strong {
   color: var(--text);
-  font-size: 8px;
+  font-size: calc(var(--reader-font-size) * 0.75);
 }
 .pet-progress {
   height: 5px;
@@ -322,7 +366,7 @@
   align-items: center;
   gap: 7px;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: calc(var(--reader-font-size) * 0.8);
 }
 .pet-needs > div > i {
   height: 4px;
@@ -338,7 +382,7 @@
 }
 .pet-needs small {
   color: var(--text-muted);
-  font-size: 8px;
+  font-size: calc(var(--reader-font-size) * 0.75);
   text-align: right;
 }
 
@@ -359,7 +403,7 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 7px;
-  font-size: 10px;
+  font-size: calc(var(--reader-font-size) * 0.8);
   font-weight: 600;
   transition: 0.15s ease;
 }
@@ -385,7 +429,7 @@
   justify-content: space-between;
   margin-bottom: 10px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: calc(var(--reader-font-size) * 0.9);
   font-weight: 600;
 }
 
@@ -402,7 +446,7 @@
   border: 1px solid transparent;
   border-radius: 7px;
   font-family: var(--reader-font);
-  font-size: 9px;
+  font-size: calc(var(--reader-font-size) * 0.8);
   font-weight: 600;
   transition: 0.15s ease;
 }
@@ -493,13 +537,13 @@
   border: 1px solid #e5b841;
   border-radius: 999px;
 
-  font-size: 9px;
+  font-size: calc(var(--reader-font-size) * 0.75);
   font-weight: 700;
 }
 
 #shopCategoryLabel {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: calc(var(--reader-font-size) * 0.8);
   text-align: center;
 }
 
@@ -509,7 +553,7 @@
   margin-top: 4px;
 
   color: var(--text);
-  font-size: 12px;
+  font-size: calc(var(--reader-font-size) * 0.9);
 }
 
 .shop-item div small {
@@ -518,7 +562,7 @@
   margin-top: 2px;
 
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: calc(var(--reader-font-size) * 0.8);
 }
 
 .shop-item:active {
@@ -533,7 +577,7 @@
   border-radius: 7px;
 
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: calc(var(--reader-font-size) * 0.9);
   font-weight: 600;
 }
 .shop-coming-soon {
@@ -557,8 +601,8 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text-muted);
-    font-size: 12px;
-    font-weight: 600;
+  font-size: calc(var(--reader-font-size) * 0.9);
+  font-weight: 600;
 }
 .shop-details-header {
   display: flex;
@@ -591,7 +635,7 @@
   background: var(--accent);
   color: #fff;
 
-  font-size: 10px;
+  font-size: calc(var(--reader-font-size) * 0.8);
   font-weight: 700;
 }
 
@@ -636,7 +680,7 @@
   border: 1px solid transparent;
   border-radius: 7px;
 
-  font-size: 10px;
+  font-size: calc(var(--reader-font-size) * 0.8);
   font-weight: 600;
 
   transition: 0.15s ease;
@@ -656,7 +700,7 @@
 
 .inventory-item span:last-child {
   color: var(--accent);
-  font-size: 9px;
+  font-size: calc(var(--reader-font-size) * 0.75);
   font-weight: 700;
 }
 
@@ -674,13 +718,13 @@
 #inventoryDetails h4 {
   margin: 0 0 6px 0;
   color: var(--text);
-  font-size: 12px;
+  font-size: calc(var(--reader-font-size) * 0.9);
 }
 
 #inventoryDetails p {
   margin: 4px 0;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: calc(var(--reader-font-size) * 0.8);
 }
 
 #inventoryDetails button {
@@ -695,7 +739,7 @@
   border: none;
   border-radius: 7px;
 
-  font-size: 10px;
+  font-size: calc(var(--reader-font-size) * 0.8);
   font-weight: 700;
 
   transition: 0.15s ease;
@@ -736,7 +780,7 @@
 
   color: var(--text-muted);
   text-align: center;
-  font-size: 9px;
+  font-size: calc(var(--reader-font-size) * 0.8);
 
   border: 1px dashed var(--border);
   border-radius: 7px;
@@ -759,7 +803,7 @@
   margin: 0;
 
   color: var(--text);
-  font-size: 12px;
+  font-size: calc(var(--reader-font-size) * 0.9);
   font-weight: 600;
 }
 
@@ -775,7 +819,7 @@
   border: 1px solid var(--border);
   border-radius: 8px;
 
-  font-size: 12px;
+  font-size: calc(var(--reader-font-size) * 0.85);
 }
 
 #petNameInput:focus {
@@ -792,7 +836,7 @@
 
   padding: 8px 12px;
 
-  font-size: 12px;
+  font-size: calc(var(--reader-font-size) * 0.85);
   font-weight: 600;
 
   cursor: pointer;

@@ -109,7 +109,8 @@ export function showSummaryPage() {
           <div class="summary-inline">
             <strong>+${session.xpGained} XP |</strong>
             <strong>Level: ${state.level} |</strong>
-            <strong>Current XP: ${state.xp} / ${state.required}</strong>
+            <strong>Current XP: ${state.xp} / ${state.required} |</strong>
+          <strong>Progress: ${(session.percentComplete || 0).toFixed(1)}%</strong>
           </div>
         </div>
 
@@ -129,12 +130,6 @@ export function showSummaryPage() {
           <strong>Time Reading: ${formattedTime}</strong>
           </div>
         </div>
-
-        <div class="summary-stat">
-          <span>Progress</span>
-          <strong>${(session.percentComplete || 0).toFixed(1)}%</strong>
-        </div>
-
       </div>
 
       <div class="summary-actions">
