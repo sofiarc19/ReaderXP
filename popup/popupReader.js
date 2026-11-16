@@ -6,7 +6,7 @@ export function initReader(){
     //Load saved settings (apply to popup UI only — page gets them on Play / change)
     api.storage.sync.get(["font", "fontSize", "theme", "bionic"], (data) => {
     popupSettings.font = data.font || "sans-serif";
-    popupSettings.fontSize = Number(data.fontSize) || 16;
+    popupSettings.fontSize = Number(data.fontSize) || 14;
     popupSettings.theme = data.theme || "theme-light";
     popupSettings.bionic = data.bionic || false;
 

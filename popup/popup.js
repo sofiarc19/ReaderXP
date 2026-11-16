@@ -159,20 +159,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderInventory(pet);
   });
   chrome.storage.sync.get(
-  ["coins", "totalCoinsEarned", "totalCoinsSpent"],
-  (state) => {
+    ["coins", "totalCoinsEarned", "totalCoinsSpent"],
+    (state) => {
 
-    state.coins ??= 15;
-    state.totalCoinsEarned ??= 15;
-    state.totalCoinsSpent ??= 0;
+      state.coins ??= 15;
+      state.totalCoinsEarned ??= 15;
+      state.totalCoinsSpent ??= 0;
 
-    chrome.storage.sync.set({
-      coins: state.coins,
-      totalCoinsEarned: state.totalCoinsEarned,
-      totalCoinsSpent: state.totalCoinsSpent
-    });
+      chrome.storage.sync.set({
+        coins: state.coins,
+        totalCoinsEarned: state.totalCoinsEarned,
+        totalCoinsSpent: state.totalCoinsSpent
+      });
 
-    updateCoinsUI(state);
-  }
-);
+      updateCoinsUI(state);
+    }
+  );
 });

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "ReaderXP",
   "version": "1.0",
-  "description": "Reading-focus tool.",
+  "description": "ReaderXP analyzes webpage text to create a focused reading experience.",
 
   "action": {
     "default_popup": "popup/popup.html"

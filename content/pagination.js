@@ -155,13 +155,14 @@ export function updateLeveling() {
 
     let xpMultiplier = XP_MULTIPLIERS.FIRST_READ;
 
-    if (completedArticle) {
-      const reads = existingArticle.sessionCount || 1;
+    const reads = existingArticle?.sessionCount || 0;
 
-      if (reads >= 3) {
+    if (completedArticle) {
+      const nextRead = reads + 1;
+
+      if (nextRead >= 3) {
         xpMultiplier = XP_MULTIPLIERS.REPEAT_READ;
-      }
-      else if (reads >= 2) {
+      } else if (nextRead >= 2) {
         xpMultiplier = XP_MULTIPLIERS.SECOND_READ;
       }
     }
@@ -172,12 +173,10 @@ export function updateLeveling() {
     state.xp += gainedXp;
     state.sessionXp += gainedXp;
 
+    // Mark paragraph as rewarded
     state.pageXpmap.add(pageId);
     state.completedPages.add(pageId);
     updateCompletionProgress();
-
-    // Mark paragraph as rewarded
-    state.pageXpmap.add(pageId);
 
     // Level up check
     while (state.xp >= getRequiredXp(state.level)) {
@@ -206,7 +205,7 @@ export function updateLeveling() {
       "[LEVEL] XP Award:", gainedXp,
       "Current XP:", state.xp, 
       "/ Required:", state.required,
-      "Mood Multiplier:", xpMultiplier,
+      "Reread Multiplier:", xpMultiplier,
       "Coins Gained:", state.sessionCoinsGained,
       "Session Count:", sessionCount);
     // Save progression

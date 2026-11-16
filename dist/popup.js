@@ -111,7 +111,7 @@
   function initReader() {
     api.storage.sync.get(["font", "fontSize", "theme", "bionic"], (data) => {
       popupSettings.font = data.font || "sans-serif";
-      popupSettings.fontSize = Number(data.fontSize) || 16;
+      popupSettings.fontSize = Number(data.fontSize) || 14;
       popupSettings.theme = data.theme || "theme-light";
       popupSettings.bionic = data.bionic || false;
       document.getElementById("font-select").value = popupSettings.font;
@@ -638,7 +638,7 @@
     if (effectsEl) {
       const effects = getActiveEffects(pet);
       effectsEl.innerHTML = `
-    Effects Active: ${effects.modifierCount}
+    Effects: ${effects.modifierCount}
     <div id="effectsTooltip" class="effects-tooltip">
       <strong>Reward Modifiers</strong>
       ${effects.modifiers.length ? effects.modifiers.map((effect) => `<div>\u2022 ${effect}</div>`).join("") : "<div>\u2022 No active reward modifiers.</div>"}
@@ -682,8 +682,12 @@
         return "Your pet is low on energy and could use some rest or an energy-boosting item.";
       case "Lonely":
         return "Your pet feels lonely and would enjoy some attention.";
-      case "Mad":
+      case "Hungry":
         return "Your pet is hungry and becoming frustrated. A snack would improve its mood.";
+      case "Mad":
+        return `Your pet is mad and becoming frustrated. ${lowest.name} is at ${Math.round(lowest.value)}%`;
+      case "Uncomfortable":
+        return `${lowest.name} is at ${Math.round(lowest.value)}%, and needs attention.`;
       case "Sad":
         return "Your pet's overall mood is low. Caring for it or improving its needs should help.";
       case "Sick":
@@ -716,13 +720,28 @@
   function getPetStats(pet) {
     const problems = [];
     const totalStats = pet.hunger + pet.energy + pet.social + pet.hygiene + pet.mood;
-    if (totalStats <= 100) {
-      if (pet.hunger <= 10 && pet.energy <= 10 && pet.social <= 10 && pet.hygiene <= 10)
+    const statMap = [
+      { value: pet.hunger, mood: "Hungry" },
+      { value: pet.energy, mood: "Tired" },
+      { value: pet.social, mood: "Lonely" },
+      { value: pet.hygiene, mood: "Uncomfortable" },
+      { value: pet.mood, mood: "Sad" }
+    ];
+    const lowest = statMap.sort((a, b) => a.value - b.value)[0];
+    if (totalStats <= 150) {
+      if (totalStats === 0) {
         return "Neglected";
-      return "Sick";
+      }
+      if (totalStats <= 50) {
+        return "In Recovery";
+      }
+      if (totalStats <= 75) {
+        return "Sick";
+      }
+      return lowest.mood;
     } else if (totalStats < 250) {
       if (pet.hunger <= 50)
-        problems.push("Mad");
+        problems.push("Hungry");
       if (pet.energy <= 50)
         problems.push("Tired");
       if (pet.social <= 50)
@@ -732,12 +751,14 @@
       if (pet.mood <= 50)
         problems.push("Sad");
       if (problems.length) {
+        if (totalStats >= 200 && totalStats < 250) {
+          problems.push("Content");
+        }
         return pickRandom(problems);
       }
-      return "Content";
     } else if (totalStats <= 300) {
       if (pet.hunger <= 30)
-        problems.push("Mad");
+        problems.push("Hungry");
       if (pet.energy <= 30)
         problems.push("Tired");
       if (pet.social <= 30)
@@ -753,7 +774,7 @@
       return "Content";
     } else if (totalStats < 425) {
       if (pet.hunger <= 15)
-        problems.push("Mad");
+        problems.push("Hungry");
       if (pet.energy <= 15)
         problems.push("Tired");
       if (pet.social <= 15)
@@ -768,8 +789,10 @@
       }
       return "Content";
     }
-    if (totalStats >= 425)
+    if (totalStats >= 425) {
       return "Happy";
+    }
+    return "Content";
   }
   function rollPetActivity(pet) {
     const mood = getPetStats(pet);
@@ -799,12 +822,24 @@
           "Waiting",
           "Staring"
         ]);
+      case "Hungry":
+        return pickRandom([
+          "Angry",
+          "Annoyed",
+          "Refusing"
+        ]);
       case "Mad":
         return pickRandom([
           "Angry",
           "Annoyed",
-          "Refusing",
-          "Uncomfortable"
+          "Refusing"
+        ]);
+      case "Uncomfortable":
+        return pickRandom([
+          "Angry",
+          "Annoyed",
+          "Crying",
+          "Surprised"
         ]);
       case "Sad":
         return pickRandom([
@@ -813,7 +848,15 @@
         ]);
       case "Sick":
         return pickRandom([
+          "Fever"
+        ]);
+      case "In Recovery":
+        return pickRandom([
           "Life Support"
+        ]);
+      case "Neglected":
+        return pickRandom([
+          "Coma"
         ]);
       default:
         return "Content";
@@ -913,10 +956,10 @@
       case "Life Support":
         setPetState("sick1");
         break;
-      case "Uncomfortable":
+      case "Fever":
         setPetState("sick2");
         break;
-      case "Neglected":
+      case "Coma":
         setPetState("dead");
         break;
       // Mad:
@@ -1594,13 +1637,14 @@
 
   // popup/popupSession.js
   function initSessions() {
-    document.getElementById("openSessionArticle")?.addEventListener("click", async () => {
+    document.getElementById("openSessionArticle")?.addEventListener("click", () => {
       const url = document.getElementById("openSessionArticle")?.dataset.url;
       if (!url) return;
-      const tab = await getActiveTab();
-      if (tab?.id) {
-        chrome.tabs.update(tab.id, { url });
-      }
+      chrome.tabs.update({
+        url,
+        active: true
+      });
+      window.close();
     });
     document.getElementById("btn-continue-reading")?.addEventListener("click", async () => {
       const tab = await getActiveTab();
@@ -1612,6 +1656,7 @@
         action: "start-reader",
         resumePage,
         resumePercent: window.resumeSession?.percentComplete || 0,
+        completedPages: window.resumeSession?.completedPages || [],
         settings: { ...popupSettings }
       });
       if (response?.ok) {
@@ -1635,6 +1680,7 @@
 
         <span>
             <strong>${session.title}</strong>
+            <br>
             <small>
             ${count} session${count !== 1 ? "s" : ""}
             </small>
@@ -1680,7 +1726,7 @@
             titleEl.textContent = session.title;
           }
           if (metaEl) {
-            metaEl.textContent = `${session.wordsRead || 0} words read \u2022 ${session.totalXp || 0} XP earned \u2022 ${session.percentComplete || 0}% complete \u2022 Page ${(session.currentPage ?? 0) + 1}`;
+            metaEl.textContent = `${session.wordsRead || 0} words read \u2022 ${session.xpGained || 0} XP earned \u2022 ${session.percentComplete || 0}% complete \u2022 Page ${(session.currentPage ?? 0) + 1}`;
           }
         });
       }
@@ -1692,7 +1738,7 @@
     const openBtn = document.getElementById("openSessionArticle");
     if (!title || !meta) return;
     title.textContent = session.title;
-    meta.textContent = `${session.wordsRead || 0} words \u2022 ${session.totalXp || session.xpGained || 0} XP earned \u2022 ${session.sessionCount || 1} sessions`;
+    meta.textContent = `${session.wordsRead || 0} words \u2022 ${session.xpGained || 0} XP earned \u2022 ${session.sessionCount || 1} sessions  \u2022 ${session.percentComplete || 0}% complete`;
     if (openBtn) {
       if (session.url) {
         openBtn.dataset.url = session.url;

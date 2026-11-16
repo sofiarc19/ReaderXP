@@ -118,6 +118,10 @@ body {
   cursor: pointer;
 }
 
+#all-reader-stats {
+  font-size: calc(var(--reader-font-size) * 0.85);
+}
+
 .reader-alltime-stats:hover {
   background: var(--surface-hover);
 }
@@ -137,9 +141,16 @@ body {
   display: block;
   height: 100%;
   width: 0%;
-  background: var(--surface-hover);
+  background: var(--progress-fill);
   border-radius: inherit;
   transition: width 0.25s ease;
+}
+
+
+#reader-active-popup{
+  font-size: calc(var(--reader-font-size) * 0.8);
+  font-weight: 600;
+  color: var(--text);
 }
 
 /* Reader Session Actions (Pause, Bookmark, Resume, Finish) */
@@ -197,7 +208,7 @@ body {
 .sessions-heading > div { display: grid; gap: 2px; }
 .sessions-heading strong {
   color: var(--text);
-  font-size: 12px;
+  /* font-size: 12px; */
 }
 .sessions-heading span {
   color: var(--text-muted);
@@ -235,7 +246,8 @@ body {
   padding: 7px 9px;
   color: var(--text-muted);
   background: var(--surface);
-  border: 1px solid transparent;
+  border: 1px solid;
+  border-color: var(--border);
   border-radius: 8px;
   text-align: left;
 }
@@ -267,11 +279,11 @@ body {
   height: 7px;
   border-radius: 50%;
 }
-.sessions-0 { background: #6482e3; }
-.sessions-1 { background: #9b73d2; }
-.sessions-2 { background: #58ac83; }
-.sessions-3 { background: #e79558; }
-.sessions-4 { background: #4ba7ac; }
+.sessions-0 { background: var(--accent); }
+.sessions-1 { background: var(--text-muted); }
+.sessions-2 { background: var(--text); }
+.sessions-3 { background: var(--accent-hover); }
+.sessions-4 { background: var(--border); }
 
 .sessions-current {
   display: grid;
@@ -490,10 +502,10 @@ body {
 }
 .theme-dracula {
   --bg: #170404;
-  --surface: #160000;
+  --surface: #2b0202;
   
   --surface-hover: #371313;
-  --surface-raised: #383c4f;
+  --surface-raised: #1a1111;
 
   --shadow: 0 18px 50px rgba(0, 0, 0, 0.3);
   --border: #480303;
@@ -501,7 +513,7 @@ body {
   --text: #a53232;
   --text-muted: #8b8b8b;
 
-  --accent: #8a464a;
+  --accent: #753c40;
   --accent-hover: #5e1818;
 
   --progress-bg: #4b4f65;

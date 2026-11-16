@@ -19,6 +19,8 @@ export function buildReadingSession(state) {
 
     currentPage: state.currentPage,
     percentComplete: state.percentComplete,
+    pageCount: state.pageIndexMap.length,
+    completedPages: [...(state.completedPages || [])],
 
     xpGained: state.sessionXp || 0,
     totalXp: state.xp,
@@ -80,11 +82,14 @@ export function saveReadingSession(session) {
           session.wordsRead;
         currentSession.totalTimeMs =
           session.totalTimeMs;
-        currentSession.totalXp =
-          session.totalXp;
+        currentSession.xpGained =
+          currentSession.xpGained || 0;
         currentSession.coinsGained =
           session.coinsGained;
-        currentSession.percentComplete =
+        currentSession.completedPages =
+          [...(session.completedPages || [])];
+        currentSession.pageCount = session.pageCount || currentSession.pageCount;
+          currentSession.percentComplete =
           session.percentComplete;
         currentSession.currentPage =
           session.currentPage;
@@ -102,21 +107,26 @@ export function saveReadingSession(session) {
         currentSession.totalTimeMs =
           (currentSession.totalTimeMs || 0) +
           (session.totalTimeMs || 0);
-        currentSession.totalXp =
-          session.totalXp;
+        currentSession.xpGained =
+          (currentSession.xpGained || 0) +
+          (session.xpGained || 0);
         currentSession.coinsGained =
           (currentSession.coinsGained || 0) +
           (session.coinsGained || 0);
-        currentSession.percentComplete = Math.max(
-          currentSession.percentComplete || 0,
-          session.percentComplete || 0);
+        currentSession.completedPages = [...new Set([
+          ...(currentSession.completedPages || []),
+          ...(session.completedPages || []), ]),];
+        currentSession.pageCount = session.pageCount || currentSession.pageCount;
+        const totalPages = currentSession.pageCount ||
+          session.pageCount || currentSession.completedPages.length;
+        currentSession.percentComplete = Math.round(
+          (currentSession.completedPages.length / totalPages) * 100);
         currentSession.currentPage = session.currentPage;
-        currentSession.sessionCount = Math.max(
-          currentSession.sessionCount || 1, 
-          session.sessionCount || 1);
+        currentSession.sessionCount = (currentSession.sessionCount || 1) + 1;
         currentSession.lastReadAt = session.endedAt;
         currentSession.endedAt = session.endedAt;
-        currentSession.status = session.status;
+        currentSession.status = currentSession.percentComplete >= 100
+          ? "completed" : session.status;
       }
     } else {
       // Otherwise its a brand new article so we need to add it to the sync storage
@@ -134,6 +144,8 @@ export function saveReadingSession(session) {
           totalTimeMs: session.totalTimeMs,
           percentComplete: session.percentComplete,
           currentPage: session.currentPage,
+          completedPages: [...state.completedPages],
+          pageCount: state.pageIndexMap.length,
         })
     }
     const MAX_SESSION_HISTORY = 20;
@@ -288,6 +300,8 @@ export function saveSessionCheckpoint() {
     wordsReadSoFar: state.wordsReadSoFar,
 
     percentComplete: state.percentComplete,
+    completedPages: [...state.completedPages],
+    pageCount: state.pageIndexMap.length,
 
     sessionStartedAt: state.sessionStartedAt,
     totalSessionTime: state.totalSessionTime,

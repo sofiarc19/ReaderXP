@@ -1,22 +1,24 @@
-import { api, getActiveTab, ensureContentScript, sendMessageToTab } from "./popupUtils";
+import { getActiveTab, ensureContentScript, sendMessageToTab } from "./popupUtils";
 import {loadHistory} from "../content/sessions";
 import {popupSettings} from "./popupSettings";
 
 export function initSessions(){
     document.getElementById("openSessionArticle")
-        ?.addEventListener("click", async () => {
+    ?.addEventListener("click", () => {
 
         const url = document.getElementById("openSessionArticle")?.dataset.url;
-        if (!url) return;
-        const tab = await getActiveTab();
 
-        if (tab?.id) {
-            chrome.tabs.update(tab.id, { url });
-        }
+        if (!url) return;
+
+        chrome.tabs.update({
+            url,
+            active: true
+        });
+
+        window.close();
     });
     // Continue reading btn if there is a previous session
-    document
-    .getElementById("btn-continue-reading")
+    document.getElementById("btn-continue-reading")
     ?.addEventListener("click", async () => {
 
         const tab = await getActiveTab();
@@ -33,19 +35,14 @@ export function initSessions(){
             await sendMessageToTab(tab.id, {
                 action: "start-reader",
                 resumePage,
-                resumePercent:
-                window.resumeSession?.percentComplete || 0,
+                resumePercent: window.resumeSession?.percentComplete || 0,
+                completedPages: window.resumeSession?.completedPages || [],
                 settings: { ...popupSettings },
             });
 
         if (response?.ok) {
-        document
-            .getElementById("reader-previous-sesh")
-            ?.classList.add("hidden");
-
-        document
-            .getElementById("reader-active-popup")
-            ?.classList.remove("hidden");
+            document.getElementById("reader-previous-sesh")?.classList.add("hidden");
+            document.getElementById("reader-active-popup")?.classList.remove("hidden");
         }
     });
 
@@ -64,7 +61,6 @@ function renderSessionList(history) {
     history.forEach((session, index) => {
         const btn = document.createElement("button");
         const count = session.sessionCount ?? 1;
-        //const xp = session.xpGained ?? 0;
 
         btn.className = "sessions-item";
 
@@ -73,6 +69,7 @@ function renderSessionList(history) {
 
         <span>
             <strong>${session.title}</strong>
+            <br>
             <small>
             ${count} session${count !== 1 ? "s" : ""}
             </small>
@@ -149,7 +146,7 @@ export async function checkForPreviousSession() {
             if (metaEl) {
                 metaEl.textContent =
                 `${session.wordsRead || 0} words read • ` +
-                `${session.totalXp || 0} XP earned • ` +
+                `${session.xpGained || 0} XP earned • ` +
                 `${session.percentComplete || 0}% complete • ` +
                  `Page ${(session.currentPage ?? 0) + 1}`;
             }
@@ -174,8 +171,9 @@ function showSessionSummary(session) {
 
     meta.textContent =
         `${session.wordsRead || 0} words • ` +
-        `${session.totalXp || session.xpGained || 0} XP earned • ` +
-        `${session.sessionCount || 1} sessions`;
+        `${session.xpGained || 0} XP earned • ` +
+        `${session.sessionCount || 1} sessions  • `+ 
+        `${session.percentComplete || 0}% complete`;
 
     if (openBtn) {
         if (session.url) {

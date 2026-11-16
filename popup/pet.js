@@ -166,7 +166,7 @@ if (effectsEl) {
   const effects = getActiveEffects(pet);
 
   effectsEl.innerHTML = `
-    Effects Active: ${effects.modifierCount}
+    Effects: ${effects.modifierCount}
     <div id="effectsTooltip" class="effects-tooltip">
       <strong>Reward Modifiers</strong>
       ${effects.modifiers.length? effects.modifiers
@@ -227,8 +227,14 @@ function getPetGuidance(pet) {
     case "Lonely":
       return "Your pet feels lonely and would enjoy some attention.";
 
-    case "Mad":
+    case "Hungry":
       return "Your pet is hungry and becoming frustrated. A snack would improve its mood.";
+    
+    case "Mad":
+      return `Your pet is mad and becoming frustrated. ${lowest.name} is at ${Math.round(lowest.value)}%`;
+
+    case "Uncomfortable":
+      return `${lowest.name} is at ${Math.round(lowest.value)}%, and needs attention.`;
 
     case "Sad":
       return "Your pet's overall mood is low. Caring for it or improving its needs should help.";
@@ -270,14 +276,38 @@ function getPetStats(pet){ //Send out why they are the animation they are (what 
 
   // Activities: Happy, Content, Tired, Lonely, Sad, Sick, defualt/idle 
   const totalStats = pet.hunger + pet.energy + pet.social + pet.hygiene + pet.mood;
-  if (totalStats <= 100){
-      if (pet.hunger <= 10 && pet.energy <= 10 && pet.social <= 10 && pet.hygiene <= 10)
-        return "Neglected";
-    return "Sick"; 
+  const statMap = [
+  { value: pet.hunger, mood: "Hungry" },
+  { value: pet.energy, mood: "Tired" },
+  { value: pet.social, mood: "Lonely" },
+  { value: pet.hygiene, mood: "Uncomfortable" },
+  { value: pet.mood, mood: "Sad" },
+];
+
+const lowest = statMap.sort((a, b) => a.value - b.value)[0];
+  
+  // if (totalStats <= 100){
+  //     if (pet.hunger <= 10 && pet.energy <= 10 && pet.social <= 10 && pet.hygiene <= 10)
+  //       return "Neglected";
+  //   return "Sick"; 
+  if (totalStats <= 150) {
+    if (totalStats === 0) {
+      return "Neglected";
+    }
+
+    if (totalStats <= 50) {
+      return "In Recovery";
+    }
+
+    if (totalStats <= 75) {
+      return "Sick";
+    }
+
+    return lowest.mood;
   } else if (totalStats < 250) {
-    // higher chance of returning something other that content at 300
+    // higher chance of returning something other that content at 250
     if (pet.hunger <= 50) 
-      problems.push("Mad");  
+      problems.push("Hungry");  
     if (pet.energy <= 50)
       problems.push("Tired");
     if (pet.social <= 50)
@@ -287,13 +317,15 @@ function getPetStats(pet){ //Send out why they are the animation they are (what 
     if (pet.mood <= 50) 
       problems.push("Sad");
     if (problems.length) {
+      if (totalStats >= 200 && totalStats < 250){ //might cause error
+        problems.push("Content");
+      }
       return pickRandom(problems);
-    } 
-    return "Content";
+    }  
   } else if (totalStats <= 300) {
     // higher chance of returning something other that content at 300
     if (pet.hunger <= 30) 
-      problems.push("Mad");
+      problems.push("Hungry");
     if (pet.energy <= 30)
       problems.push("Tired");
     if (pet.social <= 30)
@@ -310,7 +342,7 @@ function getPetStats(pet){ //Send out why they are the animation they are (what 
   } else if (totalStats < 425) {
     // small chance of returning anything other than content at 425
     if (pet.hunger <= 15) 
-      problems.push("Mad"); 
+      problems.push("Hungry"); 
     if (pet.energy <= 15)
       problems.push("Tired");
     if (pet.social <= 15)
@@ -324,8 +356,10 @@ function getPetStats(pet){ //Send out why they are the animation they are (what 
       return pickRandom(problems);
     }
     return "Content";
-  } if (totalStats >= 425)
+  } if (totalStats >= 425){
     return "Happy";
+  }
+  return "Content";
 }
 
 // Pick random activity from base stats
@@ -362,12 +396,26 @@ function rollPetActivity(pet) {
         "Staring",
       ]);
 
+    case "Hungry":
+      return pickRandom([
+        "Angry",
+        "Annoyed",
+        "Refusing",
+      ]);
+
     case "Mad":
       return pickRandom([
         "Angry",
         "Annoyed",
         "Refusing",
-        "Uncomfortable"
+      ]);
+
+    case "Uncomfortable": 
+      return pickRandom([
+        "Angry",
+        "Annoyed",
+        "Crying",
+        "Surprised"
       ]);
 
     case "Sad":
@@ -378,7 +426,17 @@ function rollPetActivity(pet) {
 
     case "Sick":
       return pickRandom([
+        "Fever"
+      ]);
+
+    case "In Recovery":
+      return pickRandom([
         "Life Support"
+      ]);
+
+    case "Neglected":
+      return pickRandom([
+        "Coma"
       ]);
 
     default:
@@ -492,10 +550,10 @@ export function updatePetUI(pet) {
     case "Life Support":
       setPetState("sick1");
       break;
-    case "Uncomfortable":
+    case "Fever":
       setPetState("sick2");
       break;
-     case "Neglected":
+     case "Coma":
       setPetState("dead");
       break;
     // Mad:

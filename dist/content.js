@@ -2369,6 +2369,8 @@
       wordsRead: state2.wordsReadSoFar,
       currentPage: state2.currentPage,
       percentComplete: state2.percentComplete,
+      pageCount: state2.pageIndexMap.length,
+      completedPages: [...state2.completedPages || []],
       xpGained: state2.sessionXp || 0,
       totalXp: state2.xp,
       coinsGained: state2.sessionCoinsGained,
@@ -2409,8 +2411,10 @@
         if (session.isCheckpoint) {
           currentSession.wordsRead = session.wordsRead;
           currentSession.totalTimeMs = session.totalTimeMs;
-          currentSession.totalXp = session.totalXp;
+          currentSession.xpGained = currentSession.xpGained || 0;
           currentSession.coinsGained = session.coinsGained;
+          currentSession.completedPages = [...session.completedPages || []];
+          currentSession.pageCount = session.pageCount || currentSession.pageCount;
           currentSession.percentComplete = session.percentComplete;
           currentSession.currentPage = session.currentPage;
           currentSession.lastReadAt = session.endedAt;
@@ -2419,20 +2423,22 @@
         } else {
           currentSession.wordsRead = (currentSession.wordsRead || 0) + (session.wordsRead || 0);
           currentSession.totalTimeMs = (currentSession.totalTimeMs || 0) + (session.totalTimeMs || 0);
-          currentSession.totalXp = session.totalXp;
+          currentSession.xpGained = (currentSession.xpGained || 0) + (session.xpGained || 0);
           currentSession.coinsGained = (currentSession.coinsGained || 0) + (session.coinsGained || 0);
-          currentSession.percentComplete = Math.max(
-            currentSession.percentComplete || 0,
-            session.percentComplete || 0
+          currentSession.completedPages = [.../* @__PURE__ */ new Set([
+            ...currentSession.completedPages || [],
+            ...session.completedPages || []
+          ])];
+          currentSession.pageCount = session.pageCount || currentSession.pageCount;
+          const totalPages = currentSession.pageCount || session.pageCount || currentSession.completedPages.length;
+          currentSession.percentComplete = Math.round(
+            currentSession.completedPages.length / totalPages * 100
           );
           currentSession.currentPage = session.currentPage;
-          currentSession.sessionCount = Math.max(
-            currentSession.sessionCount || 1,
-            session.sessionCount || 1
-          );
+          currentSession.sessionCount = (currentSession.sessionCount || 1) + 1;
           currentSession.lastReadAt = session.endedAt;
           currentSession.endedAt = session.endedAt;
-          currentSession.status = session.status;
+          currentSession.status = currentSession.percentComplete >= 100 ? "completed" : session.status;
         }
       } else {
         currentSession = session;
@@ -2448,7 +2454,9 @@
           wordsRead: session.wordsRead,
           totalTimeMs: session.totalTimeMs,
           percentComplete: session.percentComplete,
-          currentPage: session.currentPage
+          currentPage: session.currentPage,
+          completedPages: [...state.completedPages],
+          pageCount: state.pageIndexMap.length
         });
       }
       const MAX_SESSION_HISTORY = 20;
@@ -2484,6 +2492,8 @@
       currentPage: state.currentPage,
       wordsReadSoFar: state.wordsReadSoFar,
       percentComplete: state.percentComplete,
+      completedPages: [...state.completedPages],
+      pageCount: state.pageIndexMap.length,
       sessionStartedAt: state.sessionStartedAt,
       totalSessionTime: state.totalSessionTime,
       sessionXp: state.sessionXp,
@@ -2947,8 +2957,7 @@
           <div class="summary-inline">
             <strong>+${session.xpGained} XP |</strong>
             <strong>Level: ${state.level} |</strong>
-            <strong>Current XP: ${state.xp} / ${state.required} |</strong>
-          <strong>Progress: ${(session.percentComplete || 0).toFixed(1)}%</strong>
+            <strong>Current XP: ${state.xp} / ${state.required}</strong>
           </div>
         </div>
 
@@ -2965,7 +2974,8 @@
         <span>Reading Stats:</span>
           <div class="summary-inline">
             <strong>Words Read: ${session.wordsRead} |</strong>
-          <strong>Time Reading: ${formattedTime}</strong>
+            <strong>Time Reading: ${formattedTime} |</strong>
+            <strong>Progress: ${(session.percentComplete || 0).toFixed(1)}%</strong>
           </div>
         </div>
       </div>
@@ -3119,11 +3129,12 @@
         const sessionCount = existingArticle?.sessionCount || 0;
         const completedArticle = existingArticle && (existingArticle.status === "completed" || existingArticle.percentComplete >= 100);
         let xpMultiplier = XP_MULTIPLIERS.FIRST_READ;
+        const reads = existingArticle?.sessionCount || 0;
         if (completedArticle) {
-          const reads = existingArticle.sessionCount || 1;
-          if (reads >= 3) {
+          const nextRead = reads + 1;
+          if (nextRead >= 3) {
             xpMultiplier = XP_MULTIPLIERS.REPEAT_READ;
-          } else if (reads >= 2) {
+          } else if (nextRead >= 2) {
             xpMultiplier = XP_MULTIPLIERS.SECOND_READ;
           }
         }
@@ -3133,7 +3144,6 @@
         state.pageXpmap.add(pageId);
         state.completedPages.add(pageId);
         updateCompletionProgress();
-        state.pageXpmap.add(pageId);
         while (state.xp >= getRequiredXp(state.level)) {
           state.xp -= getRequiredXp(state.level);
           const levelReward = getLevelUpCoins(state.level + 1);
@@ -3157,7 +3167,7 @@
           state.xp,
           "/ Required:",
           state.required,
-          "Mood Multiplier:",
+          "Reread Multiplier:",
           xpMultiplier,
           "Coins Gained:",
           state.sessionCoinsGained,
@@ -3494,8 +3504,8 @@
               state.sessionNotes = [];
               state.sessionTags = [];
               state.pageXpmap.clear();
-              state.completedPages.clear();
               state.paragraphCache.clear();
+              state.completedPages = new Set(msg.completedPages || []);
               state.pausedAt = null;
               state.isPaused = false;
               state.totalPausedMs = 0;
@@ -3539,7 +3549,13 @@
                 state.allSentences = extractSentences();
               }
               state.pageIndexMap = buildPageIndexMap();
-              state.currentPage = 0;
+              if (state.completedPages.size > 0) {
+                state.percentComplete = Math.round(
+                  state.completedPages.size / state.pageIndexMap.length * 100
+                );
+              } else {
+                state.currentPage = 0;
+              }
               if (msg.resumePage !== void 0) {
                 state.currentPage = Math.max(
                   0,

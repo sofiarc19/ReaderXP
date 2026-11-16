@@ -76,9 +76,9 @@ export function setupMessaging() {
             state.sessionTags = [];
             // Reset XP awards for paragraphs
             state.pageXpmap.clear();
-            state.completedPages.clear();
             state.paragraphCache.clear();
-
+            state.completedPages = new Set(msg.completedPages || []);
+        
             // Pause-related tracking
             state.pausedAt = null;
             state.isPaused = false;
@@ -154,7 +154,12 @@ export function setupMessaging() {
             
             // Build pagination structure for reader
             state.pageIndexMap = buildPageIndexMap();
-            state.currentPage = 0;
+            if (state.completedPages.size > 0) {
+              state.percentComplete = Math.round(
+                (state.completedPages.size / state.pageIndexMap.length) * 100);
+            } else {
+              state.currentPage = 0;
+            }
 
             // Apply styling + highlight first paragraph
             if (msg.resumePage !== undefined) {

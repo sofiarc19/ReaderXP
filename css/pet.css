@@ -85,7 +85,7 @@
   top: 10px;
   left: 11px;
   padding: 4px 7px;
-  color: #6870cb;
+  color: var(--text);
   background: rgba(255,255,255,.8);
   border-radius: 5px;
   font-size: calc(var(--reader-font-size) * 0.75);
@@ -222,7 +222,7 @@
   top: calc(100% + 6px);
   left: 0;
 
-  min-width: 100px;
+  min-width: 124px;
   max-width: 260px;
 
   padding: 10px;
@@ -268,7 +268,7 @@
   align-items: center;
   gap: 4px;
 
-  padding: 4px 7px;
+  padding: 4px 10px;
 
   color: var(--accent);
   background: var(--surface-hover);
@@ -284,7 +284,7 @@
   top: calc(100% + 6px);
   left: 0;
 
-  min-width: 85px;
+  min-width: 125px;
 
   background: var(--surface);
   border: 1px solid var(--border);
