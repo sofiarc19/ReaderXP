@@ -201,26 +201,26 @@ export function showPausedPage() {
     };
   }
 
-  document
-    .getElementById("paused-finish-btn")
-    ?.addEventListener("click", () => {
+  const finishBtn = document.getElementById("paused-finish-btn");
+  if (finishBtn) {
+    finishBtn.onclick = () => {
       updateLeveling().then(() => {
+        state.sessionStatus =
+          state.percentComplete >= 100
+            ? "completed"
+            : "in_progress";
 
-      state.sessionStatus =
-        state.percentComplete >= 100
-          ? "completed"
-          : "in_progress";
+        chrome.storage.sync.set({
+          readingActive: false,
+        });
 
-      chrome.storage.sync.set({
-        readingActive: false,
+        showSummaryPage();
+
+        state.isPaused = false;
+        state.pausedAt = null;
       });
-
-      showSummaryPage();
-
-      state.isPaused = false;
-      state.pausedAt = null;
-    });
-  });
+    };
+  }
 }
 
 export function resumeReadingPage() {

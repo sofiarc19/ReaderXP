@@ -2867,6 +2867,14 @@
         scheduled = true;
         setTimeout(() => {
           scheduled = false;
+          const bar = document.getElementById("reader-area-bar");
+          if (!bar) return;
+          if (bar.parentElement !== document.documentElement) {
+            document.documentElement.appendChild(bar);
+          } else {
+            document.documentElement.appendChild(bar);
+          }
+          bar.style.zIndex = "2147483647";
         }, 100);
       });
       observer.observe(document.body, {
@@ -3023,17 +3031,20 @@
         resumeReadingPage();
       };
     }
-    document.getElementById("paused-finish-btn")?.addEventListener("click", () => {
-      updateLeveling().then(() => {
-        state.sessionStatus = state.percentComplete >= 100 ? "completed" : "in_progress";
-        chrome.storage.sync.set({
-          readingActive: false
+    const finishBtn = document.getElementById("paused-finish-btn");
+    if (finishBtn) {
+      finishBtn.onclick = () => {
+        updateLeveling().then(() => {
+          state.sessionStatus = state.percentComplete >= 100 ? "completed" : "in_progress";
+          chrome.storage.sync.set({
+            readingActive: false
+          });
+          showSummaryPage();
+          state.isPaused = false;
+          state.pausedAt = null;
         });
-        showSummaryPage();
-        state.isPaused = false;
-        state.pausedAt = null;
-      });
-    });
+      };
+    }
   }
   function resumeReadingPage() {
     document.getElementById("reader-paused")?.classList.add("hidden");
@@ -3102,6 +3113,7 @@
     state.activeElement = start;
   }
   function updateLeveling() {
+    console.trace("[LEVEL] updateLeveling called");
     return new Promise((resolve) => {
       const pageId = state.currentPage;
       const sentences = state.currentChunk;
@@ -3335,6 +3347,7 @@
     progressEl.textContent = total > 0 ? `${current} / ${total}` : "0 / 0";
   }
   function injectReaderArea() {
+    console.log("[READER UI] injectReaderArea()");
     const existing = document.getElementById("reader-area-bar");
     if (existing) existing.remove();
     const bar = document.createElement("div");
@@ -3380,22 +3393,6 @@
     document.documentElement.appendChild(bar);
     document.getElementById("btn-next").addEventListener("click", nextPage);
     document.getElementById("btn-prev").addEventListener("click", prevPage);
-    const pausedResumeBtn = document.getElementById("paused-resume-btn");
-    const pausedFinishBtn = document.getElementById("paused-finish-btn");
-    if (pausedResumeBtn) {
-      pausedResumeBtn.addEventListener("click", () => {
-        chrome.runtime.sendMessage({
-          action: "resume-reader"
-        });
-      });
-    }
-    if (pausedFinishBtn) {
-      pausedFinishBtn.addEventListener("click", () => {
-        chrome.runtime.sendMessage({
-          action: "finish-reader"
-        });
-      });
-    }
     const pauseBtn = document.getElementById("reader-pause");
     const finishBtn = document.getElementById("reader-finish");
     if (pauseBtn) {
@@ -3417,10 +3414,6 @@
         if (state.idleIntervalId) {
           clearInterval(state.idleIntervalId);
           state.idleIntervalId = null;
-        }
-        if (state.autosaveId) {
-          clearInterval(state.autosaveId);
-          state.autosaveId = null;
         }
         updateLeveling().then(() => {
           state.sessionStatus = state.percentComplete >= 100 ? "completed" : "in_progress";

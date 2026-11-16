@@ -25,33 +25,43 @@ export function toggleBlur() {
 
 export function startObserver() {
   function attachObserver() {
-      // Wait until <body> exists before attaching the observer
+    // Wait until <body> exists before attaching the observer
     if (!document.body) {
-      // Try again shortly
       setTimeout(attachObserver, 50);
       return;
     }
 
     let scheduled = false;
-    // Watch for DOM changes
+
     const observer = new MutationObserver(() => {
-      // Prevent rapid repeated triggers
       if (scheduled) return;
       scheduled = true;
 
-      // Debounce mutation handling
       setTimeout(() => {
         scheduled = false;
+
+        const bar = document.getElementById("reader-area-bar");
+
+        // Reader isn't active
+        if (!bar) return;
+
+        // Keep reader at top of DOM
+        if (bar.parentElement !== document.documentElement) {
+          document.documentElement.appendChild(bar);
+        } else {
+          document.documentElement.appendChild(bar);
+        }
+
+        // Reassert z-index in case site scripts mess with it
+        bar.style.zIndex = "2147483647";
       }, 100);
     });
 
-    // Observe additions/removals anywhere in the document
     observer.observe(document.body, {
       childList: true,
       subtree: true
     });
   }
 
-  // Begin observer setup
   attachObserver();
 }

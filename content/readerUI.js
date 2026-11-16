@@ -80,6 +80,7 @@ export function updateReaderProgress() {
 
 // Inject the reader UI bar into the page
 export function injectReaderArea() {
+  console.log("[READER UI] injectReaderArea()");
   const existing = document.getElementById("reader-area-bar");
   if (existing) existing.remove();
 
@@ -132,28 +133,6 @@ export function injectReaderArea() {
   document.getElementById("btn-next").addEventListener("click", nextPage);
   document.getElementById("btn-prev").addEventListener("click", prevPage);
 
-  const pausedResumeBtn =
-  document.getElementById("paused-resume-btn");
-
-  const pausedFinishBtn =
-    document.getElementById("paused-finish-btn");
-
-  if (pausedResumeBtn) {
-    pausedResumeBtn.addEventListener("click", () => {
-      chrome.runtime.sendMessage({
-        action: "resume-reader",
-      });
-    });
-  }
-
-  if (pausedFinishBtn) {
-    pausedFinishBtn.addEventListener("click", () => {
-      chrome.runtime.sendMessage({
-        action: "finish-reader",
-      });
-    });
-  }
-
   const pauseBtn =
   document.getElementById("reader-pause");
 
@@ -184,10 +163,6 @@ export function injectReaderArea() {
       if (state.idleIntervalId) {
         clearInterval(state.idleIntervalId);
         state.idleIntervalId = null;
-      }
-      if (state.autosaveId) {
-        clearInterval(state.autosaveId);
-        state.autosaveId = null;
       }
       updateLeveling().then(() => {
         state.sessionStatus =

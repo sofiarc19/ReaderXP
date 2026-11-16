@@ -109,6 +109,7 @@ export function setActivePage() {
 // XP is awarded when leaving a page, not when entering a page. This ensures the user has
 // spent sufficient time reading the content before receiving XP.
 export function updateLeveling() {
+  console.trace("[LEVEL] updateLeveling called");
   return new Promise((resolve) => {
   const pageId = state.currentPage;
   const sentences = state.currentChunk;

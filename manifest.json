@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "ReaderXP",
   "version": "1.0",
-  "description": "ReaderXP analyzes webpage text to create a focused reading experience.",
+  "description": "Enhancing Reading Engagement through Accessibility, Personalization, and Gamification",
 
   "action": {
     "default_popup": "popup/popup.html"
