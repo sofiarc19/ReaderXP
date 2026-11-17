@@ -237,7 +237,7 @@ export function updateLeveling() {
 //Navigation, Moves forward/backward through pages using the index map.
 export function nextPage() {
   console.log(
-    "[SUMMARY] Final session XP:",
+    "[SESSION] Current XP:",
     state.sessionXp
   );
   // currentPageWords = words in the page currently visible, When moving pages:

@@ -15,11 +15,25 @@
     });
   }
   function sendMessageToTab(tabId, message) {
+    console.log("[SEND MESSAGE]", message.action);
     return new Promise((resolve, reject) => {
       api.tabs.sendMessage(tabId, message, (response) => {
         const err = api.runtime.lastError;
-        if (err) reject(new Error(err.message));
-        else resolve(response);
+        if (err) {
+          console.log(
+            "[MESSAGE FAILED]",
+            message.action,
+            err.message
+          );
+          reject(new Error(err.message));
+        } else {
+          console.log(
+            "[MESSAGE OK]",
+            message.action,
+            response
+          );
+          resolve(response);
+        }
       });
     });
   }
@@ -216,6 +230,18 @@
             api.runtime.sendMessage(
               { action: "get-selection" },
               (response) => {
+                if (api.runtime.lastError) {
+                  console.log(
+                    "[GET-SELECTION ERROR]",
+                    api.runtime.lastError.message
+                  );
+                  resolve("");
+                  return;
+                }
+                console.log(
+                  "[GET-SELECTION RESPONSE]",
+                  response
+                );
                 resolve(response?.text || "");
               }
             );
@@ -227,6 +253,7 @@
         const ok = await ensureContentScript(tab.id);
         if (!ok) return;
         try {
+          console.log("[POPUP] Sending start-reader");
           const response = await sendMessageToTab(tab.id, {
             action: "start-reader",
             selectedText,
@@ -276,15 +303,14 @@
         "sessionReadingcoins"
       ],
       (data) => {
-        if (!data.readingActive) return;
+        if (!data.readingActive) {
+          $("#reader-active-popup")?.classList.add("hidden");
+          return;
+        }
         const statusText = data.articleTitle ? `Reading: ${data.articleTitle}` : "Reading now";
-        const status = document.getElementById(
-          "reader-status"
-        );
+        const status = document.getElementById("reader-status");
         if (data.isPaused) {
-          document.getElementById(
-            "reader-status"
-          ).textContent = "Reading paused";
+          document.getElementById("reader-status").textContent = "Reading paused";
         } else if (status) {
           status.textContent = statusText;
         }
@@ -630,23 +656,11 @@
     const activityTooltip = document.getElementById("activityTooltip");
     if (activityTooltip) {
       activityTooltip.innerHTML = `
-      <strong>${pet.activity || "Idle"}</strong><br>
-      ${getActivityDescription(pet.activity)}
+      <strong>${pet.activity || "Idle"}</strong>
+      ${getActivityDescription(pet.activity, pet)}
     `;
     }
-    const effectsEl = document.getElementById("petEffects");
-    if (effectsEl) {
-      const effects = getActiveEffects(pet);
-      effectsEl.innerHTML = `
-    Effects: ${effects.modifierCount}
-    <div id="effectsTooltip" class="effects-tooltip">
-      <strong>Reward Modifiers</strong>
-      ${effects.modifiers.length ? effects.modifiers.map((effect) => `<div>\u2022 ${effect}</div>`).join("") : "<div>\u2022 No active reward modifiers.</div>"}
-      <br>
-      <strong>Pet Effects</strong>
-      ${effects.info.length ? effects.info.map((effect) => `<div>\u2022 ${effect}</div>`).join("") : "<div>\u2022 No active pet effects.</div>"}
-    </div>`;
-    }
+    updateEffectsUI(pet);
     updatePetBar("pet-hunger-bar", "pet-hunger-value", pet.hunger);
     updatePetBar("pet-mood-bar", "pet-mood-value", pet.mood);
     updatePetBar("pet-hygiene-bar", "pet-hygiene-value", pet.hygiene);
@@ -666,6 +680,7 @@
   }
   function getPetGuidance(pet) {
     const mood = getPetStats(pet);
+    const petName = pet?.name || "Your pet";
     const lowest = [
       { name: "hunger", value: pet.hunger },
       { name: "energy", value: pet.energy },
@@ -675,47 +690,54 @@
     ].sort((a, b) => a.value - b.value)[0];
     switch (mood) {
       case "Happy":
-        return "Your pet is thriving. Keep reading and caring for it to maintain its happiness.";
+        return `${petName} is thriving and enjoying life. Keep reading and caring for them to maintain that happiness.`;
       case "Content":
-        return `Your pet is content, but ${lowest.name} is at ${Math.round(lowest.value)}% and may need attention soon.`;
+        return pickRandom([
+          `${petName} is feeling content and relaxed.`,
+          `${petName} seems comfortable but could use a little extra attention.`,
+          `${petName} is doing well overall, though ${lowest.name} is starting to fall behind.`
+        ]);
       case "Tired":
-        return "Your pet is low on energy and could use some rest or an energy-boosting item.";
+        return `${petName} is running low on energy and could use some rest.`;
       case "Lonely":
-        return "Your pet feels lonely and would enjoy some attention.";
+        return `${petName} feels lonely and would appreciate some attention.`;
       case "Hungry":
-        return "Your pet is hungry and becoming frustrated. A snack would improve its mood.";
-      case "Mad":
-        return `Your pet is mad and becoming frustrated. ${lowest.name} is at ${Math.round(lowest.value)}%`;
-      case "Uncomfortable":
-        return `${lowest.name} is at ${Math.round(lowest.value)}%, and needs attention.`;
+        return `${petName} is hungry and would love something to eat.`;
       case "Sad":
-        return "Your pet's overall mood is low. Caring for it or improving its needs should help.";
+        return `${petName}'s spirits are low. Improving their needs should help them feel better.`;
+      case "Uncomfortable":
+        return `${petName} isn't feeling comfortable right now. ${lowest.name} is only at ${Math.round(lowest.value)}%.`;
       case "Sick":
-        return "Several of your pet's needs are critically low. It needs immediate care.";
+        return `${petName} is feeling sick because several needs have dropped too low.`;
+      case "Weary":
+        return `${petName} is exhausted. Most needs are critically low and require urgent attention.`;
       case "Neglected":
-        return "Your pet has been neglected for too long. Multiple needs are at low levels.";
+        return `${petName} has been neglected for too long and needs immediate care.`;
       default:
-        return "Your pet is observing the world around it.";
+        return `${petName} is quietly observing the world.`;
     }
   }
-  function getActivityDescription(activity) {
+  function getActivityDescription(activity, pet) {
+    const petName = pet?.name || "your pet";
     const descriptions = {
-      Dancing: "Your pet is full of energy and celebrating.",
-      Excited: "Something has your pet feeling especially happy.",
-      Relaxing: "Your pet is taking it easy.",
-      Observing: "Your pet is watching the world around it.",
-      Sleeping: "Your pet is recovering energy.",
-      Yawning: "Your pet is getting sleepy.",
-      Waiting: "Your pet is hoping for attention.",
-      Staring: "Your pet seems lonely.",
-      Crying: "Your pet is feeling down.",
-      Moping: "Your pet isn't having a great day.",
-      Angry: "Your pet is frustrated by unmet needs.",
-      Annoyed: "Something is bothering your pet.",
-      Refusing: "Your pet is unhappy and doesn't want to cooperate.",
-      "Life Support": "Your pet is in very poor condition and needs help immediately."
+      Dancing: `${petName} is full of energy and celebrating.`,
+      Excited: `Something has ${petName} feeling especially happy.`,
+      Relaxing: `${petName} is taking it easy.`,
+      Observing: `${petName} is watching the world around it.`,
+      Sleeping: `${petName} is recovering energy.`,
+      Yawning: `${petName} is getting sleepy.`,
+      Waiting: `${petName} is hoping for attention.`,
+      Staring: `${petName} seems lonely.`,
+      Crying: `${petName} is feeling down.`,
+      Moping: `${petName} isn't having a great day.`,
+      Angry: `${petName} is frustrated by unmet needs.`,
+      Annoyed: `Something is bothering ${petName}.`,
+      Refusing: `${petName} is unhappy and doesn't want to cooperate.`,
+      "Life Support": `${petName} is in very poor condition and needs help immediately.`,
+      Fever: `${petName} is feeling sick and needs some care.`,
+      Coma: `${petName} has been neglected for too long and needs immediate care.`
     };
-    return descriptions[activity] ?? "Your pet is doing its own thing.";
+    return descriptions[activity] ?? `${petName} is doing its own thing.`;
   }
   function getPetStats(pet) {
     const problems = [];
@@ -727,13 +749,13 @@
       { value: pet.hygiene, mood: "Uncomfortable" },
       { value: pet.mood, mood: "Sad" }
     ];
-    const lowest = statMap.sort((a, b) => a.value - b.value)[0];
+    const lowest = [...statMap].sort((a, b) => a.value - b.value)[0];
     if (totalStats <= 150) {
       if (totalStats === 0) {
         return "Neglected";
       }
       if (totalStats <= 50) {
-        return "In Recovery";
+        return "Weary";
       }
       if (totalStats <= 75) {
         return "Sick";
@@ -850,7 +872,7 @@
         return pickRandom([
           "Fever"
         ]);
-      case "In Recovery":
+      case "Weary":
         return pickRandom([
           "Life Support"
         ]);
@@ -876,6 +898,7 @@
   }
   function updatePetUI(pet) {
     updatePetActivity(pet);
+    updateEffectsUI(pet);
     const mood = getPetStats(pet);
     const activity = pet.activity;
     const moodTooltip = document.getElementById("moodTooltip");
@@ -894,8 +917,8 @@
     const activityTooltip = document.getElementById("activityTooltip");
     if (activityTooltip) {
       activityTooltip.innerHTML = `
-      <strong>${activity || "Idle"}</strong><br>
-      ${getActivityDescription(activity)}
+      <strong>${activity || "Idle"}</strong>
+      ${getActivityDescription(activity, pet)}
     `;
     }
     switch (activity) {
@@ -1097,28 +1120,50 @@
   }
   function getActiveEffects(pet) {
     const modifiers = [];
-    const info = [];
+    const passives = [];
     const coinMultiplier = getMoodCoinMultiplier(pet);
     if (coinMultiplier > 1) {
-      modifiers.push("Happy Mood (+20% Coin Rewards)");
+      modifiers.push(
+        `Happy Mood (+${Math.round((coinMultiplier - 1) * 100)}% Coin Rewards)`
+      );
     }
     if (coinMultiplier < 1) {
       modifiers.push(
         `Low Mood (-${Math.round((1 - coinMultiplier) * 100)}% Coin Rewards)`
       );
     }
-    info.push(`Reading sessions grant +1 Mood and +1 Social`);
-    info.push(
+    passives.push(
+      "Reading sessions grant +1 Mood and +1 Social"
+    );
+    passives.push(
       `Daily Reading Rewards Remaining: ${MAX_DAILY_READING_REWARDS - pet.dailyReadingRewards}/${MAX_DAILY_READING_REWARDS}`
     );
     return {
-      modifierCount: modifiers.length,
+      activeCount: modifiers.length,
+      passiveCount: passives.length,
+      totalCount: modifiers.length + passives.length,
       modifiers,
-      info
+      passives
     };
   }
   function pickRandom(items) {
     return items[Math.floor(Math.random() * items.length)];
+  }
+  function updateEffectsUI(pet) {
+    const effectsEl = document.getElementById("petEffects");
+    if (!effectsEl) return;
+    const effects = getActiveEffects(pet);
+    effectsEl.innerHTML = `
+    Effects: ${effects.totalCount}
+    <div id="effectsTooltip" class="effects-tooltip">
+      <strong>Active Effects (${effects.activeCount})</strong>
+
+      ${effects.modifiers.length ? effects.modifiers.map((effect) => `<div>\u2022 ${effect}</div>`).join("") : "<div>\u2022 No active effects.</div>"}
+      <br>
+      <strong>Passive Effects (${effects.passiveCount})</strong>
+      ${effects.passives.length ? effects.passives.map((effect) => `<div>\u2022 ${effect}</div>`).join("") : "<div>\u2022 No passive effects.</div>"}
+    </div>
+  `;
   }
   window.inspectSprite = (file, frames) => {
     const img = new Image();
@@ -1830,6 +1875,8 @@
             btn.addEventListener("click", () => {
               $$(".shop-categories button").forEach((b) => b.classList.remove("active"));
               btn.classList.add("active");
+              const details = document.getElementById("shopDetails");
+              details.classList.add("hidden");
               const category = btn.dataset.shop;
               chrome.storage.sync.get(
                 ["coins", "totalCoinsSpent"],

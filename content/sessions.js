@@ -186,7 +186,9 @@ export function getSessionCoinReward() {
   let coins = Math.floor(state.wordsReadSoFar / 500);
 
   if (state.percentComplete >= 100) {
-    coins += 5;
+    coins += 5; // complete a session 100% get 5 coins 
+  } else if (state.wordsReadSoFar === 0){
+    coins = 0; // would get 1 coin on first page other wise
   }
 
   return coins;

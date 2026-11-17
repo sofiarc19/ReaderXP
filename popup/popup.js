@@ -115,6 +115,9 @@ function initShopUI() {
             $$(".shop-categories button").forEach((b) =>
               b.classList.remove("active"));
               btn.classList.add("active");
+              const details = document.getElementById("shopDetails");
+              // if (!details) return;
+              details.classList.add("hidden");
 
               const category = btn.dataset.shop;
               // Refresh state so coin count is always current

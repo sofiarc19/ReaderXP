@@ -2478,6 +2478,8 @@
     let coins = Math.floor(state.wordsReadSoFar / 500);
     if (state.percentComplete >= 100) {
       coins += 5;
+    } else if (state.wordsReadSoFar === 0) {
+      coins = 0;
     }
     return coins;
   }
@@ -2914,7 +2916,10 @@
         state.percentComplete
       );
       const multiplier = getMoodCoinMultiplier(pet);
-      const finalCoins = Math.max(1, Math.round(sessionCoins * multiplier));
+      let finalCoins = Math.max(1, Math.round(sessionCoins * multiplier));
+      if (sessionCoins === 0) {
+        finalCoins = 0;
+      }
       state.sessionReadingCoins = finalCoins;
       state.sessionCoinsGained += finalCoins;
       state.coins += finalCoins;
@@ -2974,7 +2979,7 @@
           <div class="summary-inline">
             <strong>Reading: ${state.sessionReadingCoins} +</strong>
             <strong>Level: ${state.sessionLevelCoins} =</strong>
-            <strong>Total Coins gained: +${session.coinsGained}</strong>
+            <strong>Total Coins gained: ${session.coinsGained}</strong>
           </div>
         </div>
 
@@ -3211,7 +3216,7 @@
   }
   function nextPage() {
     console.log(
-      "[SUMMARY] Final session XP:",
+      "[SESSION] Current XP:",
       state.sessionXp
     );
     console.log("Page: ", state.currentPage + 2);
@@ -3432,7 +3437,18 @@
     bar.style.setProperty("--reader-font-size", state.readerSettings.fontSize + "px");
     const targets = $$(".extension-theme");
     targets.forEach((el) => {
-      el.classList.remove("theme-dark", "theme-light", "theme-forest");
+      el.classList.remove(
+        "theme-light",
+        "theme-dark",
+        "theme-sepia",
+        "theme-dracula",
+        "theme-night",
+        "theme-solarized",
+        "theme-blue",
+        "theme-green",
+        "theme-purple",
+        "theme-pink"
+      );
       el.classList.add(state.readerSettings.theme);
     });
     rerenderReader();
@@ -3651,11 +3667,13 @@
       }
       return true;
     });
+    console.log("[CONTENT] Messaging ready");
   }
 
   // content/content.js
   globalThis.browser = globalThis.browser || globalThis.chrome;
   function init() {
+    console.log("[CONTENT] INIT START");
     console.log(
       "[FRAME CHECK]",
       window.location.href,
@@ -3667,6 +3685,7 @@
     startObserver();
     setupMessaging();
     console.log("[READER] Running on:", window.location.href);
+    console.log("[CONTENT] INIT COMPLETE");
   }
   init();
 })();

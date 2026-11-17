@@ -1,6 +1,7 @@
 body {
   margin: 0;
-  width: 380px;
+  min-width: 380px;
+  max-width: fit-content;
   min-height: 200px;
   background: var(--surface);
   color: var(--text);

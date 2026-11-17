@@ -139,11 +139,27 @@ export function initReader(){
         selectedText =
             await new Promise((resolve) => {
             api.runtime.sendMessage(
-            { action: "get-selection" },
-            (response) => {
-                resolve(response?.text || "");
-            }
-            );
+  { action: "get-selection" },
+  (response) => {
+
+      if (api.runtime.lastError) {
+          console.log(
+              "[GET-SELECTION ERROR]",
+              api.runtime.lastError.message
+          );
+
+          resolve("");
+          return;
+      }
+
+      console.log(
+          "[GET-SELECTION RESPONSE]",
+          response
+      );
+
+      resolve(response?.text || "");
+  }
+);
         });
         } catch (_) {}
         const tab = await getActiveTab();
@@ -153,6 +169,7 @@ export function initReader(){
         if (!ok) return;
         
         try {
+            console.log("[POPUP] Sending start-reader");
         const response = await sendMessageToTab(tab.id, {
             action: "start-reader",
             selectedText,
@@ -220,20 +237,19 @@ export function updateReaderPopupStats() {
         ],
         (data) => {
 
-        if (!data.readingActive) return;
+        if (!data.readingActive) {
+            $("#reader-active-popup")?.classList.add("hidden");
+            return;
+        }
+
 
         const statusText = data.articleTitle
-            ? `Reading: ${data.articleTitle}`
-            : "Reading now";
+            ? `Reading: ${data.articleTitle}` : "Reading now";
 
-        const status = document.getElementById(
-            "reader-status"
-        );
+        const status = document.getElementById("reader-status");
 
         if (data.isPaused) {
-            document.getElementById(
-            "reader-status"
-            ).textContent =
+            document.getElementById("reader-status").textContent = 
             "Reading paused";
         }
         else if (status) {

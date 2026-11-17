@@ -10,7 +10,7 @@ export function setupMessaging() {
   const api = globalThis.browser || globalThis.chrome;
 
   api.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-    // console.log("[CONTENT] Message received:", msg);
+    //console.log("[CONTENT] Message received:", msg);
 
     switch (msg.action) {
       case "ping":
@@ -66,8 +66,7 @@ export function setupMessaging() {
 
             // New article starts at 0%
             // Resumed article starts where it left off
-            state.sessionStartPercent =
-              msg.resumePercent || 0;
+            state.sessionStartPercent = msg.resumePercent || 0;
             // Topic metadata
             state.topicId = null;
             state.sessionCategory = "Reading";
@@ -176,12 +175,11 @@ export function setupMessaging() {
             });
           } catch (err) {
             console.error("[CONTENT] start-reader error:", err);
-          
-          sendResponse({
-          ok: false,
-          error: err.message,
-          });
-        }
+            sendResponse({
+              ok: false,
+              error: err.message,
+            });
+          }
       });
         
       return true;
@@ -245,10 +243,10 @@ export function setupMessaging() {
           chrome.storage.sync.set({
             readingActive: false,
           });
-        chrome.storage.local.remove("readerCheckpoint");
+
+          chrome.storage.local.remove("readerCheckpoint");
 
           showSummaryPage();
-
           sendResponse({ ok: true });
         });
 
@@ -293,5 +291,5 @@ export function setupMessaging() {
     return true; 
   });
 
-  // console.log("[CONTENT] Messaging ready");
+  console.log("[CONTENT] Messaging ready");
 }

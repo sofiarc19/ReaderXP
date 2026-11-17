@@ -190,7 +190,18 @@ export function updateReaderStyle() {
 
   const targets = $$(".extension-theme");
   targets.forEach(el => {
-    el.classList.remove("theme-dark", "theme-light", "theme-forest");
+    el.classList.remove(
+      "theme-light",
+      "theme-dark",
+      "theme-sepia",
+      "theme-dracula",
+      "theme-night",
+      "theme-solarized",
+      "theme-blue",
+      "theme-green",
+      "theme-purple",
+      "theme-pink",
+    );
     el.classList.add(state.readerSettings.theme);
   });
 

@@ -21,11 +21,29 @@ export function getActiveTab() {
 
 // Send a message to a specific tab
 export function sendMessageToTab(tabId, message) {
+  console.log("[SEND MESSAGE]", message.action);
+
   return new Promise((resolve, reject) => {
     api.tabs.sendMessage(tabId, message, (response) => {
       const err = api.runtime.lastError;
-      if (err) reject(new Error(err.message));
-      else resolve(response);
+
+      if (err) {
+        console.log(
+          "[MESSAGE FAILED]",
+          message.action,
+          err.message
+        );
+
+        reject(new Error(err.message));
+      } else {
+        console.log(
+          "[MESSAGE OK]",
+          message.action,
+          response
+        );
+
+        resolve(response);
+      }
     });
   });
 }

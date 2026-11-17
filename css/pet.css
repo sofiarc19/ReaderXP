@@ -6,6 +6,7 @@
   color: #7b622a;
   font-size: calc(var(--reader-font-size) * 0.8);
   font-weight: 700;
+  position: relative;
 }
 .coin-count i {
   width: 16px;
@@ -39,12 +40,18 @@
   font-size: calc(var(--reader-font-size) * 0.8);
   line-height: 1.4;
 
-  display: none;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+
+  transition: opacity .15s ease;
   z-index: 100;
 }
 
-.coin-wrapper:hover .coin-tooltip {
-  display: block;
+.coin-count:hover .coin-tooltip {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 /* PET PANEL */
@@ -290,7 +297,6 @@
   border: 1px solid var(--border);
 
   border-radius: 10px;
-
   padding: 10px;
 
   color: var(--text);
@@ -299,7 +305,18 @@
 
   z-index: 100;
 
-  display: none;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+
+  transition: opacity .15s ease;
+}
+
+.pet-effects:hover .effects-tooltip,
+.pet-effects:focus-within .effects-tooltip {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 .effects-tooltip strong {
   display: block;
@@ -315,12 +332,6 @@
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
-}
-.effects-tooltip {
-  display: none;
-}
-.effects-tooltip.visible {
-  display: block;
 }
 
 /* Pet meter */

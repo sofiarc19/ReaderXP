@@ -40,7 +40,10 @@ export function showSummaryPage() {
       );
 
     const multiplier = getMoodCoinMultiplier(pet);
-    const finalCoins = Math.max(1, Math.round(sessionCoins * multiplier));
+    let finalCoins = Math.max(1, Math.round(sessionCoins * multiplier));
+    if(sessionCoins === 0){
+      finalCoins = 0;
+    }
 
     // Track coins earned THIS session
     state.sessionReadingCoins = finalCoins;
@@ -118,7 +121,7 @@ export function showSummaryPage() {
           <div class="summary-inline">
             <strong>Reading: ${state.sessionReadingCoins} +</strong>
             <strong>Level: ${state.sessionLevelCoins} =</strong>
-            <strong>Total Coins gained: +${session.coinsGained}</strong>
+            <strong>Total Coins gained: ${session.coinsGained}</strong>
           </div>
         </div>
 
