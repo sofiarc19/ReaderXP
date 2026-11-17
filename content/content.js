@@ -6,6 +6,8 @@ import { startObserver } from "./blur.js";
 globalThis.browser = globalThis.browser || globalThis.chrome;
 
 function init() {
+  console.log("[CONTENT] INIT START");
+
   // Ignore iframes
   console.log(
     "[FRAME CHECK]",
@@ -23,6 +25,7 @@ function init() {
   setupMessaging();
 
   console.log("[READER] Running on:", window.location.href);
+  console.log("[CONTENT] INIT COMPLETE");
 }
 
 // Run initialization when content script loads
