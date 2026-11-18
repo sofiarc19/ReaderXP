@@ -1,4 +1,4 @@
-# ReaderXP
+# ReaderXP (In Alpha)
 
 ReaderXP is a browser extension designed to improve reading engagement through gamification. Instead of passively scrolling through online content, users earn experience points, coins, and virtual pet rewards as they read articles and complete reading sessions.
 
