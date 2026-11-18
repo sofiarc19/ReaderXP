@@ -2639,7 +2639,7 @@
     },
     angry: {
       sheet: "AnimationSheet.png",
-      frames: 10,
+      frames: 9,
       frameWidth: 32,
       frameHeight: 32,
       width: 96,
@@ -3321,17 +3321,21 @@
     return state.readerSettings.bionic ? transformBionic : transformNormal;
   }
   function renderChunk(chunk) {
-    if (!chunk?.length) {
-      readerActive.innerHTML = "<p>No readable content found.</p>";
-      return;
-    }
+    console.log("[BIONIC]", state.readerSettings.bionic);
     const readerActive = document.getElementById("reader-active");
     if (!readerActive) return;
+    if (!chunk?.length) {
+      readerActive.textContent = "No readable content found.";
+      return;
+    }
     const transform = getActiveTransformFunction();
-    const html = chunk.map(
-      (sentence) => sentence.split(" ").map((word) => transform(word)).join(" ")
-    ).join("<br>");
-    readerActive.innerHTML = html;
+    readerActive.replaceChildren();
+    for (const sentence of chunk) {
+      const p = document.createElement("p");
+      const sentenceHtml = sentence.split(" ").map((word) => transform(word)).join(" ");
+      p.innerHTML = sentenceHtml;
+      readerActive.appendChild(p);
+    }
   }
   function rerenderReader() {
     if (!state.currentChunk?.length) return;
@@ -3353,6 +3357,7 @@
   }
   function injectReaderArea() {
     console.log("[READER UI] injectReaderArea()");
+    console.log("[DOC TYPE]", document.contentType);
     const existing = document.getElementById("reader-area-bar");
     if (existing) existing.remove();
     const bar = document.createElement("div");

@@ -256,9 +256,10 @@ function getActivityDescription(activity, pet) {
     "Life Support": `${petName} is in very poor condition and needs help immediately.`,
     Fever: `${petName} is feeling sick and needs some care.`,
     Coma: `${petName} has been neglected for too long and needs immediate care.`,
+    Surprised: `${petName} is surprised`,
   };
 
-  return descriptions[activity] ?? `${petName} is doing its own thing.`;
+  return descriptions[activity] ?? `${petName} is doing its own thing at the moment.`;
 }
 
 function getPetStats(pet){ //Send out why they are the animation they are (what they can do to up the stats )
@@ -481,6 +482,22 @@ export function updatePetUI(pet) {
       <strong>${activity || "Idle"}</strong>
       ${getActivityDescription(activity, pet)}
     `;
+  }
+
+  const moodEl = document.getElementById("petMood");
+  if (moodEl) {
+    const label = moodEl.querySelector(".pet-label");
+    if (label) {
+      label.textContent = mood;
+    }
+  }
+
+  const activityEl = document.getElementById("petActivity");
+  if (activityEl) {
+    const label = activityEl.querySelector(".pet-label");
+    if (label) {
+      label.textContent = activity || "Idle";
+    }
   }
 
   // case= emotion/mood setPetState("name of png")

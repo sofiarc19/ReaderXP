@@ -511,7 +511,7 @@
     },
     angry: {
       sheet: "AnimationSheet.png",
-      frames: 10,
+      frames: 9,
       frameWidth: 32,
       frameHeight: 32,
       width: 96,
@@ -735,9 +735,10 @@
       Refusing: `${petName} is unhappy and doesn't want to cooperate.`,
       "Life Support": `${petName} is in very poor condition and needs help immediately.`,
       Fever: `${petName} is feeling sick and needs some care.`,
-      Coma: `${petName} has been neglected for too long and needs immediate care.`
+      Coma: `${petName} has been neglected for too long and needs immediate care.`,
+      Surprised: `${petName} is surprised`
     };
-    return descriptions[activity] ?? `${petName} is doing its own thing.`;
+    return descriptions[activity] ?? `${petName} is doing its own thing at the moment.`;
   }
   function getPetStats(pet) {
     const problems = [];
@@ -920,6 +921,20 @@
       <strong>${activity || "Idle"}</strong>
       ${getActivityDescription(activity, pet)}
     `;
+    }
+    const moodEl = document.getElementById("petMood");
+    if (moodEl) {
+      const label = moodEl.querySelector(".pet-label");
+      if (label) {
+        label.textContent = mood;
+      }
+    }
+    const activityEl = document.getElementById("petActivity");
+    if (activityEl) {
+      const label = activityEl.querySelector(".pet-label");
+      if (label) {
+        label.textContent = activity || "Idle";
+      }
     }
     switch (activity) {
       default:

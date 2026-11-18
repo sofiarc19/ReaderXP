@@ -11,21 +11,33 @@ export function getActiveTransformFunction() {
 
 // Render a chunk of sentences into the reader UI
 export function renderChunk(chunk) {
-  if (!chunk?.length) {
-    readerActive.innerHTML = "<p>No readable content found.</p>";
-    return;
-  }
+  console.log("[BIONIC]", state.readerSettings.bionic);
+
   const readerActive = document.getElementById("reader-active");
   if (!readerActive) return;
 
+  if (!chunk?.length) {
+    readerActive.textContent = "No readable content found.";
+    return;
+  }
+  // Transform each sentence → each word → join back into HTML
+
   const transform = getActiveTransformFunction();
 
-  // Transform each sentence → each word → join back into HTML
-  const html = chunk.map(sentence =>
-      sentence.split(" ").map(word => transform(word)).join(" ")
-    ).join("<br>");
+  readerActive.replaceChildren();
 
-  readerActive.innerHTML = html;
+  for (const sentence of chunk) {
+    const p = document.createElement("p");
+
+    const sentenceHtml = sentence
+      .split(" ")
+      .map(word => transform(word))
+      .join(" ");
+
+    p.innerHTML = sentenceHtml;
+
+    readerActive.appendChild(p);
+  }
 }
 
 // Re-render the current chunk (used when settings change)
@@ -81,6 +93,7 @@ export function updateReaderProgress() {
 // Inject the reader UI bar into the page
 export function injectReaderArea() {
   console.log("[READER UI] injectReaderArea()");
+  console.log("[DOC TYPE]", document.contentType);
   const existing = document.getElementById("reader-area-bar");
   if (existing) existing.remove();
 

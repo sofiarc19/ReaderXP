@@ -92,7 +92,7 @@
   top: 10px;
   left: 11px;
   padding: 4px 7px;
-  color: var(--text);
+  color:darkgray;
   background: rgba(255,255,255,.8);
   border-radius: 5px;
   font-size: calc(var(--reader-font-size) * 0.75);

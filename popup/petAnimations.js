@@ -122,7 +122,7 @@ export const PET_ANIMATIONS = {
     },
     angry: {
       sheet: "AnimationSheet.png",
-      frames: 10,
+      frames: 9,
       frameWidth: 32,
       frameHeight: 32,
       width: 96,

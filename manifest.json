@@ -1,11 +1,15 @@
 {
   "manifest_version": 3,
-  "name": "ReaderXP",
-  "version": "1.0",
+  "name": "ReaderXP (Beta)",
+  "version": "0.1",
   "description": "Enhancing Reading Engagement through Accessibility, Personalization, and Gamification",
 
   "action": {
-    "default_popup": "popup/popup.html"
+    "default_popup": "popup/popup.html",
+    "default_icon": "popup/assets/icon/Excited.png"
+  },
+  "icons": {
+    "128": "popup/assets/icon/ReaderXP-Icon2.png"
   },
 
   "permissions": [
