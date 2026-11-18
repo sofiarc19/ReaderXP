@@ -91,4 +91,28 @@ Web Page -> Content Script -> Text Extraction (Readability) -> Sentence Processi
 - Expanded reader customization options
 - Automatic Text Extraction from PDFs and Images
 
+---
 
+## Privacy Policy
+
+Last Updated: November 2026
+
+### Information We Access
+
+ReaderXP may access webpage titles, URLs, and webpage content necessary to provide its reader-mode functionality.
+
+### How Information Is Used
+
+The accessed information is used solely to provide reading, accessibility, personalization, and gamification features.
+
+### Data Storage
+
+ReaderXP stores user preferences, reading statistics, and reading session information locally using Chrome storage APIs.
+
+### Data Sharing
+
+ReaderXP does not sell, share, rent, or transfer user data to third parties.
+
+### Remote Transmission
+
+ReaderXP does not transmit webpage content, browsing history, or personal information to external servers.
